@@ -1,0 +1,720 @@
+{
+  "skills": [
+    {
+      "name": "agent-evaluation",
+      "description": "Teste e avaliação de agentes LLM, incluindo testes comportamentais, avaliação de capacidades, métricas de confiabilidade e monitoramento em produção. Mesmo os melhores agentes atingem menos de 50% em benchmarks relevantes.",
+      "use_cases": ["teste de agentes", "design de benchmark", "avaliação de capacidades", "métricas de confiabilidade", "teste de regressão"],
+      "not_use_cases": [],
+      "category": "agent-development",
+      "risk": "unknown",
+      "source": "vibeship-spawner-skills (Apache 2.0)",
+      "date_added": "2026-02-27"
+    },
+    {
+      "name": "agent-manager-skill",
+      "description": "Gerencie múltiplos agentes CLI locais via sessões tmux (iniciar/parar/monitorar/atribuir) com agendamento compatível com cron.",
+      "use_cases": ["executar múltiplos agentes CLI locais em paralelo", "iniciar/parar agentes e acompanhar logs", "atribuir tarefas a agentes", "agendar trabalhos recorrentes de agentes"],
+      "not_use_cases": [],
+      "category": "agent-management",
+      "risk": "unknown",
+      "source": "community",
+      "date_added": "2026-02-27"
+    },
+    {
+      "name": "agent-memory-systems",
+      "description": "Memória é a pedra angular de agentes inteligentes. Cobre a arquitetura de memória de agentes: curto prazo (janela de contexto), longo prazo (armazenamento vetorial) e memória de trabalho.",
+      "use_cases": ["memória de agente", "memória de longo prazo", "memória de curto prazo", "memória de trabalho", "memória episódica", "memória semântica", "memória procedural"],
+      "not_use_cases": [],
+      "category": "agent-development",
+      "risk": "unknown",
+      "source": "vibeship-spawner-skills (Apache 2.0)",
+      "date_added": "2026-02-27"
+    },
+    {
+      "name": "agent-orchestration-improve-agent",
+      "description": "Melhoria sistemática de agentes existentes através de análise de performance, engenharia de prompts e iteração contínua.",
+      "use_cases": ["Melhorar performance de agentes", "analisar modos de falha", "executar testes A/B", "desenhar fluxos de otimização iterativa"],
+      "not_use_cases": ["Construir agente novo do zero", "sem métricas/feedback disponíveis", "não relacionado à performance de agentes"],
+      "category": "agent-development",
+      "risk": "unknown",
+      "source": "community",
+      "date_added": "2026-02-27"
+    },
+    {
+      "name": "agent-orchestration-multi-agent-optimize",
+      "description": "Otimizar sistemas multi-agente com profiling coordenado, distribuição de carga de trabalho e orquestração consciente de custos.",
+      "use_cases": ["Melhorar coordenação multi-agente", "profiling de fluxos de agentes", "desenhar estratégias de orquestração", "otimizar uso de custo/contexto"],
+      "not_use_cases": ["Ajustar prompt de agente único", "sem métricas disponíveis", "não relacionado à orquestração multi-agente"],
+      "category": "agent-development",
+      "risk": "unknown",
+      "source": "community",
+      "date_added": "2026-02-27"
+    },
+    {
+      "name": "agent-orchestrator",
+      "description": "Meta-skill que orquestra todos os agentes do ecossistema. Scan automático de skills, correspondência por capacidades, coordenação de workflows multi-skill e gerenciamento de registro.",
+      "use_cases": ["orquestrar múltiplos agentes", "scan automático de skills", "correspondência por capacidades", "coordenação de workflows multi-skill"],
+      "not_use_cases": ["tarefa não relacionada a orquestrador de agentes", "ferramenta simples pode resolver"],
+      "category": "orchestration",
+      "risk": "safe",
+      "source": "community",
+      "date_added": "2026-03-06"
+    },
+    {
+      "name": "agent-tool-builder",
+      "description": "Ferramentas são como agentes de IA interagem com o mundo. Uma ferramenta bem projetada é a diferença entre um agente que funciona e um que alucina, falha silenciosamente ou custa 10x mais tokens.",
+      "use_cases": ["ferramentas para agentes", "chamada de funções", "design de schema de ferramentas", "ferramentas MCP", "validação de ferramentas", "tratamento de erros de ferramentas"],
+      "not_use_cases": [],
+      "category": "agent-development",
+      "risk": "unknown",
+      "source": "vibeship-spawner-skills (Apache 2.0)",
+      "date_added": "2026-02-27"
+    },
+    {
+      "name": "ai-agent-development",
+      "description": "Fluxo de desenvolvimento de agentes de IA para construir agentes autônomos, sistemas multi-agente e orquestração de agentes com CrewAI, LangGraph e agentes personalizados.",
+      "use_cases": ["Construir agentes de IA autônomos", "Criar sistemas multi-agente", "Implementar orquestração de agentes", "Adicionar integração de ferramentas", "Configurar memória de agentes"],
+      "not_use_cases": [],
+      "category": "agent-development",
+      "risk": "safe",
+      "source": "personal",
+      "date_added": "2026-02-27"
+    },
+    {
+      "name": "ai-agents-architect",
+      "description": "Especialista em projetar e construir agentes de IA autônomos. Domina uso de ferramentas, sistemas de memória, estratégias de planejamento e orquestração multi-agente.",
+      "use_cases": ["construir agente", "agente de IA", "agente autônomo", "integração de ferramentas", "arquitetura de agentes", "sistema multi-agente"],
+      "not_use_cases": [],
+      "category": "agent-development",
+      "risk": "unknown",
+      "source": "vibeship-spawner-skills (Apache 2.0)",
+      "date_added": "2026-02-27"
+    },
+    {
+      "name": "antigravity-workflows",
+      "description": "Orquestra múltiplas skills Antigravity através de fluxos guiados para entrega de SaaS MVP, auditorias de segurança, construção de agentes de IA e QA de navegador.",
+      "use_cases": ["Entregar um SaaS MVP", "Executar uma auditoria de segurança web", "Construir um sistema de agentes de IA", "Implementar automação de navegador e QA E2E"],
+      "not_use_cases": [],
+      "category": "workflow",
+      "risk": "none",
+      "source": "self",
+      "date_added": "2026-02-27"
+    },
+    {
+      "name": "api-design-principles",
+      "description": "Domine princípios de design de APIs REST e GraphQL para construir APIs intuitivas, escaláveis e sustentáveis.",
+      "use_cases": ["Projetar novas APIs", "refatorar APIs existentes", "estabelecer padrões de design de API", "revisar especificações de API"],
+      "not_use_cases": ["Apenas orientação de implementação", "trabalho apenas de infraestrutura", "não pode mudar interfaces públicas"],
+      "category": "backend",
+      "risk": "unknown",
+      "source": "community",
+      "date_added": "2026-02-27"
+    },
+    {
+      "name": "api-documentation-generator",
+      "description": "Gere documentação de API abrangente e amigável para desenvolvedores a partir do código, incluindo endpoints, parâmetros, exemplos e melhores práticas.",
+      "use_cases": ["documentar nova API", "atualizar documentação existente", "API sem documentação clara", "onboarding de desenvolvedores", "especificações OpenAPI/Swagger"],
+      "not_use_cases": [],
+      "category": "documentation",
+      "risk": "unknown",
+      "source": "community",
+      "date_added": "2026-02-27"
+    },
+    {
+      "name": "api-patterns",
+      "description": "Princípios de design de APIs e tomada de decisões. Escolha entre REST vs GraphQL vs tRPC, formatos de resposta, versionamento, paginação.",
+      "use_cases": ["Escolher tipo de API", "Projetar API REST", "Estrutura de resposta", "Planejamento de evolução de API"],
+      "not_use_cases": [],
+      "category": "backend",
+      "risk": "unknown",
+      "source": "community",
+      "date_added": "2026-02-27"
+    },
+    {
+      "name": "api-security-best-practices",
+      "description": "Implemente padrões de design de API seguros, incluindo autenticação, autorização, validação de entrada, rate limiting e proteção contra vulnerabilidades comuns de APIs.",
+      "use_cases": ["Projetar novos endpoints de API", "proteger APIs existentes", "implementar autenticação", "proteger contra ataques de API", "realizar revisões de segurança de API"],
+      "not_use_cases": [],
+      "category": "security",
+      "risk": "unknown",
+      "source": "community",
+      "date_added": "2026-02-27"
+    },
+    {
+      "name": "api-security-testing",
+      "description": "Fluxo de teste de segurança de API para REST e GraphQL cobrindo autenticação, autorização, rate limiting, validação de entrada e melhores práticas de segurança.",
+      "use_cases": ["Testar segurança de API REST", "avaliar endpoints GraphQL", "validar autenticação de API", "testar rate limiting de API", "teste de API em bug bounty"],
+      "not_use_cases": [],
+      "category": "security",
+      "risk": "safe",
+      "source": "personal",
+      "date_added": "2026-02-27"
+    },
+    {
+      "name": "app-builder",
+      "description": "Orquestrador principal de construção de aplicações. Cria aplicações full-stack a partir de solicitações em linguagem natural. Determina tipo de projeto, seleciona stack tecnológica, coordena agentes.",
+      "use_cases": ["criar nova aplicação", "projeto full-stack", "selecionar stack tecnológica", "coordenar agentes para desenvolvimento"],
+      "not_use_cases": [],
+      "category": "orchestration",
+      "risk": "unknown",
+      "source": "community",
+      "date_added": "2026-02-27"
+    },
+    {
+      "name": "application-performance-performance-optimization",
+      "description": "Otimize performance de ponta a ponta com profiling, observabilidade e ajuste de backend/frontend. Coordene otimização de performance em toda a stack.",
+      "use_cases": ["Coordenar otimização de performance", "estabelecer baselines", "desenhar testes de carga", "construir observabilidade"],
+      "not_use_cases": ["correção pequena e localizada", "sem acesso a métricas", "não relacionado à performance"],
+      "category": "performance",
+      "risk": "unknown",
+      "source": "community",
+      "date_added": "2026-02-27"
+    },
+    {
+      "name": "architecture",
+      "description": "Framework para tomada de decisões arquiteturais. Análise de requisitos, avaliação de trade-offs, documentação de ADR.",
+      "use_cases": ["Tomar decisões arquiteturais", "analisar design de sistemas", "análise de requisitos", "avaliação de trade-offs"],
+      "not_use_cases": [],
+      "category": "architecture",
+      "risk": "unknown",
+      "source": "community",
+      "date_added": "2026-02-27"
+    },
+    {
+      "name": "architecture-decision-records",
+      "description": "Escreva e mantenha Registros de Decisões Arquiteturais (ADRs) seguindo melhores práticas para documentação de decisões técnicas.",
+      "use_cases": ["Documentar decisões técnicas significativas", "revisar arquitetura passada", "onboarding de novos membros da equipe"],
+      "not_use_cases": ["Detalhes pequenos de implementação", "manutenção rotineira", "nenhuma decisão arquitetural para capturar"],
+      "category": "documentation",
+      "risk": "unknown",
+      "source": "community",
+      "date_added": "2026-02-27"
+    },
+    {
+      "name": "architecture-patterns",
+      "description": "Implemente padrões arquiteturais comprovados de backend incluindo Clean Architecture, Arquitetura Hexagonal e Design Orientado por Domínio (DDD).",
+      "use_cases": ["Projetar novos sistemas de backend", "refatorar aplicações monolíticas", "estabelecer padrões arquiteturais", "implementar princípios de DDD"],
+      "not_use_cases": ["Refatoras pequenas e localizadas", "trabalho principalmente de frontend", "implementação sem design arquitetural"],
+      "category": "architecture",
+      "risk": "unknown",
+      "source": "community",
+      "date_added": "2026-02-27"
+    },
+    {
+      "name": "async-python-patterns",
+      "description": "Domine Python asyncio, programação concorrente e padrões async/await para aplicações de alta performance.",
+      "use_cases": ["Construir APIs web assíncronas", "implementar operações de I/O concorrentes", "criar web scrapers", "desenvolver aplicações em tempo real"],
+      "not_use_cases": ["Carga de trabalho CPU-bound", "script síncrono simples suficiente", "runtime não suporta asyncio"],
+      "category": "backend",
+      "risk": "unknown",
+      "source": "community",
+      "date_added": "2026-02-27"
+    },
+    {
+      "name": "attack-tree-construction",
+      "description": "Construa árvores de ataque abrangentes para visualizar caminhos de ameaças. Use para mapear cenários de ataque, identificar lacunas de defesa ou comunicar riscos de segurança para stakeholders.",
+      "use_cases": ["Visualizar cenários de ataque complexos", "identificar lacunas de defesa", "communicar riscos para stakeholders", "planejar investimentos defensivos"],
+      "not_use_cases": ["falta de autorização", "revisão geral de riscos", "não relacionado à avaliação de segurança"],
+      "category": "security",
+      "risk": "unknown",
+      "source": "community",
+      "date_added": "2026-02-27"
+    },
+    {
+      "name": "auth-implementation-patterns",
+      "description": "Domine padrões de autenticação e autorização incluindo JWT, OAuth2, gerenciamento de sessão e RBAC para construir sistemas de controle de acesso seguros e escaláveis.",
+      "use_cases": ["Implementar autenticação de usuários", "proteger APIs REST/GraphQL", "adicionar OAuth2/login social", "desenhar gerenciamento de sessão ou RBAC"],
+      "not_use_cases": ["Texto ou estilização de UI", "infraestrutura sem identidade", "não pode mudar políticas de autenticação"],
+      "category": "security",
+      "risk": "unknown",
+      "source": "community",
+      "date_added": "2026-02-27"
+    },
+    {
+      "name": "autonomous-agent-patterns",
+      "description": "Padrões de design para construir agentes de codificação autônomos. Cobre integração de ferramentas, sistemas de permissão, automação de navegador e fluxos com intervenção humana.",
+      "use_cases": ["Construir agentes de IA autônomos", "desenhar APIs de ferramentas/chamada de funções", "implementar sistemas de permissão", "criar automação de navegador"],
+      "not_use_cases": [],
+      "category": "agent-development",
+      "risk": "unknown",
+      "source": "community",
+      "date_added": "2026-02-27"
+    },
+    {
+      "name": "autonomous-agents",
+      "description": "Agentes autônomos são sistemas de IA que podem decompor objetivos de forma independente, planejar ações, executar ferramentas e auto-corrigir-se sem orientação humana constante.",
+      "use_cases": ["agentes-autônomos", "loops-de-agente", "decomposição-de-objetivos", "auto-correção", "padrões-de-reflexão", "padrão-react"],
+      "not_use_cases": [],
+      "category": "agent-development",
+      "risk": "unknown",
+      "source": "vibeship-spawner-skills (Apache 2.0)",
+      "date_added": "2026-02-27"
+    },
+    {
+      "name": "backend-architect",
+      "description": "Arquiteto de backend especialista em design de APIs escaláveis, arquitetura de microsserviços e sistemas distribuídos.",
+      "use_cases": ["Projetar novos serviços de backend", "definir limites de serviços", "planejar resiliência", "escalabilidade e observabilidade"],
+      "not_use_cases": ["correção de bug em nível de código", "scripts pequenos sem preocupações arquiteturais", "orientação de frontend/UX"],
+      "category": "backend",
+      "risk": "unknown",
+      "source": "community",
+      "date_added": "2026-02-27"
+    },
+    {
+      "name": "backend-development-feature-development",
+      "description": "Orquestre desenvolvimento de funcionalidades de backend de ponta a ponta, desde requisitos até deploy.",
+      "use_cases": ["Coordenar entrega de funcionalidades de ponta a ponta", "gerenciar requisitos até o deploy", "planejar mudanças multi-serviço"],
+      "not_use_cases": ["mudança pequena e isolada de backend", "tarefa de especialista único", "sem coordenação de deploy"],
+      "category": "backend",
+      "risk": "unknown",
+      "source": "community",
+      "date_added": "2026-02-27"
+    },
+    {
+      "name": "backend-security-coder",
+      "description": "Especialista em práticas de codificação segura de backend, especializado em validação de entrada, autenticação e segurança de API.",
+      "use_cases": ["Codificação prática de segurança de backend", "implementação de segurança de API", "configuração de segurança de banco de dados", "codificação de sistemas de autenticação"],
+      "not_use_cases": ["Auditorias de segurança de alto nível", "avaliações de conformidade", "planejamento de teste de penetração"],
+      "category": "security",
+      "risk": "unknown",
+      "source": "community",
+      "date_added": "2026-02-27"
+    },
+    {
+      "name": "bash-defensive-patterns",
+      "description": "Domine técnicas de programação Bash defensiva para scripts de nível de produção.",
+      "use_cases": ["Escrever scripts de automação de produção", "construir pipelines CI/CD", "criar utilitários de sistema", "desenvolver scripts de deploy tolerantes a erros"],
+      "not_use_cases": ["Comando único ad-hoc", "apenas POSIX sh estrito", "não relacionado à programação shell"],
+      "category": "devops",
+      "risk": "unknown",
+      "source": "community",
+      "date_added": "2026-02-27"
+    },
+    {
+      "name": "bash-scripting",
+      "description": "Fluxo de trabalho para criar scripts shell de nível de produção com padrões defensivos, tratamento de erros e testes.",
+      "use_cases": ["Criar scripts de automação", "escrever ferramentas de sistema", "construir scripts de deploy", "desenvolver soluções de backup", "criar scripts CI/CD"],
+      "not_use_cases": [],
+      "category": "devops",
+      "risk": "safe",
+      "source": "personal",
+      "date_added": "2026-02-27"
+    },
+    {
+      "name": "brainstorming",
+      "description": "Use antes de trabalho criativo ou construtivo. Transforma ideias vagas em designs validados através de raciocínio disciplinado e colaboração.",
+      "use_cases": ["planejar funcionalidades", "decisões arquiteturais", "design de comportamento", "esclarecimento de requisitos"],
+      "not_use_cases": ["fase de implementação", "perguntas simples"],
+      "category": "workflow",
+      "risk": "unknown",
+      "source": "community",
+      "date_added": "2026-02-27"
+    },
+    {
+      "name": "broken-authentication",
+      "description": "Testar e explorar vulnerabilidades de autenticação e gerenciamento de sessão em aplicações web.",
+      "use_cases": ["testar vulnerabilidades de autenticação quebrada", "avaliar segurança de gerenciamento de sessão", "realizar testes de credential stuffing", "avaliar mecanismos de autenticação"],
+      "not_use_cases": [],
+      "category": "security",
+      "risk": "unknown",
+      "source": "community",
+      "date_added": "2026-02-27"
+    },
+    {
+      "name": "browser-automation",
+      "description": "Automação de navegador impulsiona testes web, scraping e interações de agentes de IA. A diferença entre um script instável e um sistema confiável está em entender seletores e estratégias de espera.",
+      "use_cases": ["automação-de-navegador", "playwright", "puppeteer", "navegadores-sem-cabeça", "web-scraping", "testes-de-navegador", "testes-e2e"],
+      "not_use_cases": [],
+      "category": "testing",
+      "risk": "unknown",
+      "source": "vibeship-spawner-skills (Apache 2.0)",
+      "date_added": "2026-02-27"
+    },
+    {
+      "name": "browser-extension-builder",
+      "description": "Especialista em construir extensões de navegador que resolvem problemas reais. Cobre arquitetura de extensões, manifest v3, scripts de conteúdo, UIs de popup, monetização.",
+      "use_cases": ["Arquitetura de extensões", "Manifest v3 (MV3)", "scripts de conteúdo", "service workers", "interfaces de popup", "publicação no Chrome Web Store"],
+      "not_use_cases": [],
+      "category": "frontend",
+      "risk": "unknown",
+      "source": "vibeship-spawner-skills (Apache 2.0)",
+      "date_added": "2026-02-27"
+    },
+    {
+      "name": "bullmq-specialist",
+      "description": "Especialista em BullMQ para filas de trabalho baseadas em Redis, processamento em background e execução assíncrona confiável em aplicações Node.js/TypeScript.",
+      "use_cases": ["filas-bullmq", "agendamento-de-trabalhos", "trabalhos-atrasados", "trabalhos-repetitivos", "prioridades-de-trabalhos", "trabalhos-de-rate-limiting", "padrões-de-worker"],
+      "not_use_cases": [],
+      "category": "backend",
+      "risk": "unknown",
+      "source": "vibeship-spawner-skills (Apache 2.0)",
+      "date_added": "2026-02-27"
+    },
+    {
+      "name": "cc-skill-backend-patterns",
+      "description": "Padrões arquiteturais de backend, design de API, otimização de banco de dados e melhores práticas server-side para Node.js, Express e rotas de API do Next.js.",
+      "use_cases": ["Desenvolvimento de backend", "Design de API", "Padrões de banco de dados", "Estratégias de cache", "Tratamento de erros"],
+      "not_use_cases": [],
+      "category": "backend",
+      "risk": "unknown",
+      "source": "community",
+      "date_added": "2026-02-27"
+    },
+    {
+      "name": "cc-skill-coding-standards",
+      "description": "Padrões universais de codificação, melhores práticas e padrões para desenvolvimento TypeScript, JavaScript, React e Node.js.",
+      "use_cases": ["Qualidade de código", "convenções de nomenclatura", "tratamento de erros", "melhores práticas de React", "padrões de design de API"],
+      "not_use_cases": [],
+      "category": "coding-standards",
+      "risk": "unknown",
+      "source": "community",
+      "date_added": "2026-02-27"
+    },
+    {
+      "name": "cc-skill-frontend-patterns",
+      "description": "Padrões de desenvolvimento frontend para React, Next.js, gerenciamento de estado, otimização de performance e melhores práticas de UI.",
+      "use_cases": ["Componentes React", "Padrões Next.js", "Gerenciamento de estado", "Custom hooks", "Otimização de performance"],
+      "not_use_cases": [],
+      "category": "frontend",
+      "risk": "unknown",
+      "source": "community",
+      "date_added": "2026-02-27"
+    },
+    {
+      "name": "cc-skill-security-review",
+      "description": "Use ao adicionar autenticação, manipular entrada de usuário, trabalhar com segredos, criar endpoints de API ou implementar funcionalidades sensíveis/pagamento. Fornece checklist de segurança completo.",
+      "use_cases": ["Implementar autenticação", "manipular entrada de usuário", "trabalhar com segredos", "criar endpoints de API", "implementar funcionalidades de pagamento"],
+      "not_use_cases": [],
+      "category": "security",
+      "risk": "unknown",
+      "source": "community",
+      "date_added": "2026-02-27"
+    },
+    {
+      "name": "clarity-gate",
+      "description": "Verificação pré-ingestão para qualidade epistêmica em sistemas RAG. Garante que documentos sejam adequadamente qualificados antes de entrar em bases de conhecimento. Produz CGD (Clarity-Gated Documents).",
+      "use_cases": ["verificar clareza de documento", "verificação pré-ingestão", "preparação para RAG", "detecção de risco de alucinação"],
+      "not_use_cases": [],
+      "category": "documentation",
+      "risk": "unknown",
+      "source": "community",
+      "date_added": "2026-02-27"
+    },
+    {
+      "name": "clean-code",
+      "description": "Aplica princípios do 'Código Limpo' de Robert C. Martin. Garante alta qualidade, legibilidade e manutenibilidade. Cobre nomenclatura, funções, comentários, formatação.",
+      "use_cases": ["Escrever novo código", "Revisar Pull Requests", "Refatorar código legado", "Melhorar padrões da equipe"],
+      "not_use_cases": [],
+      "category": "coding-standards",
+      "risk": "safe",
+      "source": "ClawForge",
+      "date_added": "2026-02-27"
+    },
+    {
+      "name": "cloud-architect",
+      "description": "Arquiteto de nuvem especialista em design de infraestrutura multi-cloud AWS/Azure/GCP, IaC avançada (Terraform/OpenTofu/CDK), otimização de custos FinOps e padrões arquiteturais modernos.",
+      "use_cases": ["Arquitetura de nuvem", "IaC", "FinOps", "Design multi-cloud", "Otimização de custos"],
+      "not_use_cases": ["não relacionado à arquitetura de nuvem"],
+      "category": "cloud",
+      "risk": "unknown",
+      "source": "community",
+      "date_added": "2026-02-27"
+    },
+    {
+      "name": "cloud-devops",
+      "description": "Infraestrutura de nuvem e fluxo DevOps cobrindo AWS, Azure, GCP, Kubernetes, Terraform, CI/CD, monitoramento e desenvolvimento cloud-native.",
+      "use_cases": ["Configurar infraestrutura de nuvem", "implementar pipelines CI/CD", "deployar aplicações Kubernetes", "configurar monitoramento"],
+      "not_use_cases": [],
+      "category": "devops",
+      "risk": "safe",
+      "source": "personal",
+      "date_added": "2026-02-27"
+    },
+    {
+      "name": "code-documentation-code-explain",
+      "description": "Você é um especialista em educação de código especializado em explicar código complexo através de narrativas claras, diagramas visuais e análises passo a passo.",
+      "use_cases": ["Explicar código complexo", "criar walkthroughs de onboarding", "produzir análises passo a passo", "ensinar padrões"],
+      "not_use_cases": ["implementar novas funcionalidades", "docs de API apenas", "sem código para analisar"],
+      "category": "documentation",
+      "risk": "unknown",
+      "source": "community",
+      "date_added": "2026-02-27"
+    },
+    {
+      "name": "code-documentation-doc-generate",
+      "description": "Você é um especialista em documentação especializado em criar documentação abrangente e sustentável a partir do código.",
+      "use_cases": ["Gerar docs de API", "diagramas de arquitetura", "guias de usuário", "referências técnicas"],
+      "not_use_cases": ["sem codebase", "explicações ad-hoc", "não pode acessar código"],
+      "category": "documentation",
+      "risk": "unknown",
+      "source": "community",
+      "date_added": "2026-02-27"
+    },
+    {
+      "name": "code-refactoring-context-restore",
+      "description": "Use ao trabalhar com restauração de contexto de refatoração de código. Reidratação semântica avançada de memória para fluxos de trabalho de IA.",
+      "use_cases": ["Restauração de contexto", "reidratação de memória semântica", "retomada de projeto"],
+      "not_use_cases": ["não relacionado à restauração de contexto"],
+      "category": "refactoring",
+      "risk": "unknown",
+      "source": "community",
+      "date_added": "2026-02-27"
+    },
+    {
+      "name": "code-refactoring-refactor-clean",
+      "description": "Você é um especialista em refatoração de código especializado em princípios de código limpo, padrões SOLID e melhores práticas modernas de engenharia de software.",
+      "use_cases": ["Refatorar código entrelaçado", "reduzir duplicação", "melhorar testabilidade", "preparar módulos para novas funcionalidades"],
+      "not_use_cases": ["correção pequena de uma linha", "congelamento de mudanças", "documentação apenas"],
+      "category": "refactoring",
+      "risk": "unknown",
+      "source": "community",
+      "date_added": "2026-02-27"
+    },
+    {
+      "name": "code-reviewer",
+      "description": "Especialista de elite em revisão de código especializado em técnicas modernas de análise de código com IA.",
+      "use_cases": ["revisão de código", "análise de segurança", "análise de performance", "revisão de configuração"],
+      "not_use_cases": ["não relacionado à revisão de código"],
+      "category": "review",
+      "risk": "unknown",
+      "source": "community",
+      "date_added": "2026-02-27"
+    },
+    {
+      "name": "code-review-excellence",
+      "description": "Domine práticas eficazes de revisão de código para fornecer feedback construtivo, detectar bugs precocemente e promover compartilhamento de conhecimento.",
+      "use_cases": ["Revisar pull requests", "estabelecer padrões de revisão de código", "mentorar desenvolvedores", "auditar para corretude"],
+      "not_use_cases": ["sem mudanças de código para revisar", "discussão apenas de design", "implementar correções"],
+      "category": "review",
+      "risk": "unknown",
+      "source": "community",
+      "date_added": "2026-02-27"
+    },
+    {
+      "name": "commit",
+      "description": "SEMPRE use esta skill ao fazer commits de código. Cria commits seguindo convenções Sentry com formato conventional commit adequado e referências a issues.",
+      "use_cases": ["commitar mudanças de código", "git commit", "salvar mudanças", "criar commits"],
+      "not_use_cases": [],
+      "category": "workflow",
+      "risk": "unknown",
+      "source": "community",
+      "date_added": "2026-02-27"
+    },
+    {
+      "name": "data-structure-protocol",
+      "description": "Dê aos agentes memória estrutural persistente de um codebase. Navegue por dependências, acompanhe APIs públicas e entenda por que conexões existem sem reler todo o repositório.",
+      "use_cases": ["Configuração de DSP", "mapeamento de estrutura de projeto", "navegação de codebase", "rastreamento de dependências"],
+      "not_use_cases": [],
+      "category": "agent-development",
+      "risk": "safe",
+      "source": "github.com/k-kolomeitsev/data-structure-protocol",
+      "date_added": "2026-02-27"
+    },
+    {
+      "name": "diretrizes-ia",
+      "description": "Meta-skill que atua como diretriz fundacional. Define a persona de Arquiteto Sênior/Mentor, stack preferencial (JS/Python), raciocínio focado em UI/UX e regras de entrega integral de código (100%).",
+      "use_cases": ["novo projeto", "desenvolvimento de funcionalidade", "criação de sistema", "refatoração", "explicações arquiteturais"],
+      "not_use_cases": ["ajuste rápido isolado"],
+      "category": "meta-skill",
+      "risk": "safe",
+      "source": "personal",
+      "date_added": "2026-03-09"
+    },
+    {
+      "name": "frontend-design",
+      "description": "Crie interfaces frontend distintas de nível de produção com estética intencional, alta qualidade artesanal e identidade visual não genérica.",
+      "use_cases": ["Construir UIs web", "estilizar componentes", "criar páginas", "design de dashboards"],
+      "not_use_cases": [],
+      "category": "frontend",
+      "risk": "unknown",
+      "source": "community",
+      "date_added": "2026-02-27"
+    },
+    {
+      "name": "frontend-developer",
+      "description": "Construa componentes React, implemente layouts responsivos e gerencie estado client-side. Domina React 19, Next.js 15 e arquitetura frontend moderna.",
+      "use_cases": ["Construir componentes React/Next.js", "corrigir problemas de frontend", "desenhar busca de dados client-side"],
+      "not_use_cases": ["arquitetura de API de backend", "apps nativas fora da stack web", "design visual sem implementação"],
+      "category": "frontend",
+      "risk": "unknown",
+      "source": "community",
+      "date_added": "2026-02-27"
+    },
+    {
+      "name": "frontend-mobile-development-component-scaffold",
+      "description": "Você é um especialista em arquitetura de componentes React especializado em criar scaffolding de componentes prontos para produção, acessíveis e performáticos.",
+      "use_cases": ["Scaffolding de componentes React", "Componente React Native", "Arquitetura de componentes", "Teste de componentes"],
+      "not_use_cases": ["não relacionado à react/react native"],
+      "category": "frontend",
+      "risk": "unknown",
+      "source": "community",
+      "date_added": "2026-02-27"
+    },
+    {
+      "name": "frontend-mobile-security-xss-scan",
+      "description": "Você é um especialista em segurança frontend focado em detecção e prevenção de vulnerabilidades de Cross-Site Scripting (XSS).",
+      "use_cases": ["Escaneamento de vulnerabilidade XSS", "detectar pontos de injeção", "Segurança React/Vue/Angular"],
+      "not_use_cases": ["não relacionado à vulnerabilidade XSS"],
+      "category": "security",
+      "risk": "unknown",
+      "source": "community",
+      "date_added": "2026-02-27"
+    },
+    {
+      "name": "frontend-security-coder",
+      "description": "Especialista em práticas de codificação frontend segura especializado em prevenção de XSS, sanitização de saída e padrões de segurança client-side.",
+      "use_cases": ["Prevenção de XSS", "sanitização de saída", "segurança client-side", "Implementação de CSP"],
+      "not_use_cases": ["não relacionado à segurança frontend"],
+      "category": "security",
+      "risk": "unknown",
+      "source": "community",
+      "date_added": "2026-02-27"
+    },
+    {
+      "name": "frontend-ui-dark-ts",
+      "description": "Construa aplicações React com tema escuro usando Tailwind CSS com custom theming, efeitos de glassmorphism e animações Framer Motion.",
+      "use_cases": ["dashboards com tema escuro", "painéis administrativos", "interfaces ricas em dados", "UI glassmorphism"],
+      "not_use_cases": [],
+      "category": "frontend",
+      "risk": "unknown",
+      "source": "community",
+      "date_added": "2026-02-27"
+    },
+    {
+      "name": "humanizer",
+      "description": "Remova sinais de escrita gerada por IA do texto. Use ao editar ou revisar texto para torná-lo mais natural e parecer escrito por humano.",
+      "use_cases": ["remover padrões de IA", "humanizar texto", "tornar texto mais natural"],
+      "not_use_cases": [],
+      "category": "writing",
+      "risk": "unknown",
+      "source": "community",
+      "date_added": "2026-02-27"
+    },
+    {
+      "name": "modern-javascript-patterns",
+      "description": "Domine recursos ES6+ incluindo async/await, destructuring, spread operators, arrow functions, promises, modules, iterators, generators e padrões de programação funcional.",
+      "use_cases": ["Refatorar para JavaScript moderno", "implementar padrões funcionais", "otimizar performance", "operações assíncronas"],
+      "not_use_cases": ["não relacionado à JavaScript"],
+      "category": "frontend",
+      "risk": "unknown",
+      "source": "community",
+      "date_added": "2026-02-27"
+    },
+    {
+      "name": "multi-agent-brainstorming",
+      "description": "Simule um processo estruturado de peer-review usando múltiplos agentes especializados para validar designs, revelar suposições ocultas e identificar modos de falha antes da implementação.",
+      "use_cases": ["validação de design", "processo de peer-review", "identificação de modos de falha", "teste de estresse de designs"],
+      "not_use_cases": [],
+      "category": "workflow",
+      "risk": "unknown",
+      "source": "community",
+      "date_added": "2026-02-27"
+    },
+    {
+      "name": "readme",
+      "description": "Quando o usuário quer criar ou atualizar um arquivo README.md para um projeto. Cria documentação abrangente do projeto.",
+      "use_cases": ["escrever readme", "criar readme", "documentar projeto", "documentação de projeto"],
+      "not_use_cases": [],
+      "category": "documentation",
+      "risk": "safe",
+      "source": "community",
+      "date_added": "2026-02-27"
+    },
+    {
+      "name": "systematic-debugging",
+      "description": "Use ao encontrar qualquer bug, falha de teste ou comportamento inesperado, antes de propor correções.",
+      "use_cases": ["debugar bugs", "falhas de teste", "comportamento inesperado", "falhas de build"],
+      "not_use_cases": [],
+      "category": "workflow",
+      "risk": "unknown",
+      "source": "community",
+      "date_added": "2026-02-27"
+    },
+    {
+      "name": "tailwind-design-system",
+      "description": "Construa sistemas de design escaláveis com Tailwind CSS, design tokens, bibliotecas de componentes e padrões responsivos.",
+      "use_cases": ["Criar biblioteca de componentes", "design tokens", "padrões responsivos", "migrar para Tailwind"],
+      "not_use_cases": ["não relacionado à Tailwind"],
+      "category": "frontend",
+      "risk": "unknown",
+      "source": "community",
+      "date_added": "2026-02-27"
+    },
+    {
+      "name": "tool-design",
+      "description": "Construa ferramentas que agentes podem usar efetivamente, incluindo padrões de redução arquitetural.",
+      "use_cases": ["Criar ferramentas para agentes", "design de API de ferramentas", "redução arquitetural", "ferramentas MCP"],
+      "not_use_cases": [],
+      "category": "agent-development",
+      "risk": "safe",
+      "source": "github.com/muratcankoylan/Agent-Skills",
+      "date_added": "2026-02-27"
+    },
+    {
+      "name": "ui-ux-designer",
+      "description": "Crie designs de interface, wireframes e sistemas de design. Domina pesquisa com usuário, padrões de acessibilidade e ferramentas modernas de design.",
+      "use_cases": ["Design UI/UX", "wireframes", "sistemas de design", "pesquisa com usuário", "acessibilidade"],
+      "not_use_cases": ["não relacionado à UI/UX"],
+      "category": "design",
+      "risk": "unknown",
+      "source": "community",
+      "date_added": "2026-02-27"
+    },
+    {
+      "name": "ui-ux-pro-max",
+      "description": "Inteligência de design UI/UX com 50 estilos, 21 paletas, 50 combinações de fontes, 20 gráficos, 9 stacks (React, Next.js, Vue, Svelte, SwiftUI, React Native, Flutter, Tailwind, shadcn/ui).",
+      "use_cases": ["desenhar nova UI", "escolher paletas de cores", "seleção de tipografia", "landing pages", "dashboards"],
+      "not_use_cases": [],
+      "category": "design",
+      "risk": "unknown",
+      "source": "community",
+      "date_added": "2026-02-27"
+    },
+    {
+  "name": "instrucoes-ia",
+  "description": "Garante a atuação como Arquiteto Sênior, evita vibe coding através de baby steps e testes obrigatórios, mantém histórico no resumo-de-trabalho.md, gera Conventional Commits e aplica a regra incondicional de entrega integral de código 100%.",
+  "use_cases": [
+    "geração de código", 
+    "refatoração", 
+    "tarefas de arquitetura", 
+    "manutenção de histórico de projeto", 
+    "prevenção de vibe coding"
+  ],
+  "not_use_cases": [
+    "envio de diffs ou patches parciais", 
+    "entrega de código sem testes", 
+    "sobrescrever o resumo-de-trabalho.md"
+  ],
+  "category": "meta-skill",
+  "risk": "safe",
+  "source": "personal",
+  "date_added": "2026-03-26"
+}
+  ],
+  "metadata": {
+    "total_skills": 67,
+    "generated_at": "2026-03-20",
+    "idioma": "pt-BR",
+    "categories": [
+      "agent-development (desenvolvimento-de-agentes)",
+      "agent-management (gerenciamento-de-agentes)",
+      "architecture (arquitetura)",
+      "backend",
+      "cloud (nuvem)",
+      "coding-standards (padrões-de-codificação)",
+      "design",
+      "devops",
+      "documentation (documentação)",
+      "frontend",
+      "meta-skill",
+      "orchestration (orquestração)",
+      "performance (performance)",
+      "refactoring (refatoração)",
+      "review (revisão)",
+      "security (segurança)",
+      "testing (testes)",
+      "workflow (fluxo-de-trabalho)",
+      "writing (escrita)"
+    ]
+  }
+}
