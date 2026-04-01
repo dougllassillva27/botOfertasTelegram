@@ -1,0 +1,149 @@
+############################################
+# 🔐 VARIÁVEIS DE AMBIENTE (CRÍTICO)
+############################################
+# Credenciais e Variaveis de Ambiente
+.env
+.env.*
+!.env.example
+
+############################################
+# 📦 NODE.JS
+############################################
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+# Banco de dados local e Sessoes do Telegram (CRITICO)
+data/
+
+############################################
+# 🧱 BUILD / DIST / CACHE
+############################################
+dist/
+build/
+.cache/
+.next/
+.nuxt/
+out/
+coverage/
+.tmp/
+temp/
+# Ambientes Virtuais Python
+venv/
+env/
+
+############################################
+# 🧪 TESTES
+############################################
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+playwright/.auth/
+
+############################################
+# 🐍 PYTHON
+############################################
+# Cache e arquivos compilados do Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.sqlite3
+*.db
+
+# Virtual env
+venv/
+.env/
+.venv/
+
+############################################
+# 📄 LOGS
+############################################
+# Logs
+*.log
+logs/
+error.log
+service.log
+
+############################################
+# 💻 SISTEMA OPERACIONAL
+############################################
+.DS_Store
+Thumbs.db
+
+############################################
+# 🧠 IDE / EDITORES
+############################################
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+############################################
+# 🔒 SEGURANÇA / SENSÍVEIS
+############################################
+*.pem
+*.key
+*.crt
+*.pfx
+secrets.json
+
+############################################
+# 📁 ARQUIVOS LOCAIS / EXPERIMENTAIS
+############################################
+backup/
+tmp/
+temp/
+
+############################################
+# ⚙️ SCRIPTS LOCAIS (SE NÃO FOREM DO PROJETO)
+############################################
+*.ps1
+*.bat
+*.vbs
+
+############################################
+# 📂 SEUS CASOS ESPECÍFICOS
+############################################
+Single user/
+nssm.exe
+
+############################################
+# ❌ GERAL
+############################################
+.geminiignore
+.env.example
+node_modules
+error.log
+Single user/
+nssm.exe
+service.log
+migrate.js
+db.js
+postgre_conection.md
+reverse-migrate.sql
+.env
+.DS_Store
+.env
+tests/
+buscarContas/
+backup/
+calcularLuz/
+data/
+.cursorrules
+resumo_skills.json
+skills_completa.json
+resumo-de-trabalho.md
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/
+whatch-deploy.ps1
+guia_integracao.md
