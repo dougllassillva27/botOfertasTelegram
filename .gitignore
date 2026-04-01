@@ -1,10 +1,35 @@
+
 ############################################
-# 🔐 VARIÁVEIS DE AMBIENTE (CRÍTICO)
+# ❌ GERAL/PESSOAL
 ############################################
-# Credenciais e Variaveis de Ambiente
 .env
+.env.example
 .env.*
 !.env.example
+
+.geminiignore
+.cursorrules
+
+error.log
+Single user/
+service.log
+migrate.js
+db.js
+postgre_conection.md
+reverse-migrate.sql
+.DS_Store
+tests/
+buscarContas/
+backup/
+calcularLuz/
+data/
+resumo_skills.json
+skills_completa.json
+resumo-de-trabalho.md
+Single user/
+nssm.exe
+whatch-deploy.ps1
+guia_integracao.md
 
 ############################################
 # 📦 NODE.JS
@@ -106,44 +131,10 @@ temp/
 *.bat
 *.vbs
 
-############################################
-# 📂 SEUS CASOS ESPECÍFICOS
-############################################
-Single user/
-nssm.exe
-
-############################################
-# ❌ GERAL
-############################################
-.geminiignore
-.env.example
-node_modules
-error.log
-Single user/
-nssm.exe
-service.log
-migrate.js
-db.js
-postgre_conection.md
-reverse-migrate.sql
-.env
-.DS_Store
-.env
-tests/
-buscarContas/
-backup/
-calcularLuz/
-data/
-.cursorrules
-resumo_skills.json
-skills_completa.json
-resumo-de-trabalho.md
-
 # Playwright
 /test-results/
 /playwright-report/
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/
-whatch-deploy.ps1
-guia_integracao.md
+.env.example
