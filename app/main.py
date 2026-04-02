@@ -31,7 +31,7 @@ async def main():
             raise events.StopPropagation
 
         # --- COMMAND HANDLER: /comandos ---
-        @client.on(events.NewMessage(chats=FORWARD_TO, pattern=r'(?i)^/comandos(.*)', from_users='me'))
+        @client.on(events.NewMessage(chats=FORWARD_TO, pattern=r'(?i)^/comandos(.*)'))
         async def handle_comandos(event):
             msg = (
                 "🤖 **Central de Controle - Comandos Disponíveis:**\n\n"
@@ -53,7 +53,7 @@ async def main():
             raise events.StopPropagation
 
                 # --- COMMAND HANDLER: /buscar ---
-        @client.on(events.NewMessage(chats=FORWARD_TO, pattern=r'(?i)^/buscar(.*)', from_users='me'))
+        @client.on(events.NewMessage(chats=FORWARD_TO, pattern=r'(?i)^/buscar(.*)'))
         async def handle_buscar(event):
             args_text = event.pattern_match.group(1).strip()
             
@@ -116,7 +116,7 @@ async def main():
 
 
         # --- COMMAND HANDLER: /grupos ---
-        @client.on(events.NewMessage(chats=FORWARD_TO, pattern=r'(?i)^/grupos(.*)', from_users='me'))
+        @client.on(events.NewMessage(chats=FORWARD_TO, pattern=r'(?i)^/grupos(.*)'))
         async def handle_grupos(event):
             args_text = event.pattern_match.group(1).strip()
             args = args_text.split() if args_text else []
@@ -149,7 +149,7 @@ async def main():
             raise events.StopPropagation
 
         # --- COMMAND HANDLER: /alertas ---
-        @client.on(events.NewMessage(chats=FORWARD_TO, pattern=r'(?i)^/alertas(.*)', from_users='me'))
+        @client.on(events.NewMessage(chats=FORWARD_TO, pattern=r'(?i)^/alertas(.*)'))
         async def handle_alertas(event):
             args_text = event.pattern_match.group(1).strip()
             args = args_text.split() if args_text else []
