@@ -42,6 +42,14 @@ class MessageHandler:
             return
 
         message_text = event.message.message if event.message.message else ""
+
+        # Verifica duplicidade antes de processar
+        should_send, reason = self.offer_service.check_and_register_offer(message_text)
+
+        if not should_send:
+            logger.info(f"Oferta pulada (motivo: {reason}) — não reencaminhando")
+            return
+
         matched_keyword = self.offer_service.check_keyword_match(message_text)
 
         if matched_keyword:
@@ -58,6 +66,14 @@ class MessageHandler:
             msg_date = event.message.date.astimezone(br_tz).strftime(
                 "%d/%m/%Y às %H:%M"
             )
+
+            # Atualiza registro com grupo de destino
+            title, description, url = self.offer_service.extract_offer_info(message_text)
+            if title:
+                offer_hash = self.offer_service.deduplicator.generate_hash(title, description, url)
+                if offer_hash in self.offer_service.deduplicator.offers:
+                    self.offer_service.deduplicator.offers[offer_hash]["groups_sent"].append(chat_title)
+                    self.offer_service.deduplicator._save_data()
 
             await self.client.send_message(
                 self.offer_service.state["forward_to"],

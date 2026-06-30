@@ -6,6 +6,8 @@ import re
 import logging
 from datetime import datetime, timedelta, timezone
 
+from app.services.deduplication import OfferDeduplicator
+
 logger = logging.getLogger(__name__)
 
 
@@ -14,6 +16,7 @@ class OfferService:
 
     def __init__(self, state):
         self.state = state
+        self.deduplicator = OfferDeduplicator()
 
     async def search_offers(self, client, query, max_results=30):
         """Busca ofertas retroativas nos últimos 7 dias em todos os grupos monitorados."""
@@ -118,3 +121,38 @@ class OfferService:
             if re.search(pattern, message_lower):
                 return keyword
         return None
+
+    def extract_offer_info(self, message_text):
+        """Extrai título, descrição e URL de uma mensagem."""
+        if not message_text:
+            return None, None, None
+
+        # Tenta extrair URL
+        url_match = re.search(r'(https?://\S+)', message_text)
+        url = url_match.group(1) if url_match else None
+
+        # Simples heurística: primeira linha é título, resto é descrição
+        lines = message_text.strip().split('\n')
+        title = lines[0] if lines else message_text[:100]
+        description = '\n'.join(lines[1:]) if len(lines) > 1 else ''
+
+        return title, description, url
+
+    def should_send_offer(self, title, description, url=None):
+        """
+        Verifica se oferta deve ser enviada (não é duplicata).
+
+        Returns:
+            tuple: (should_send: bool, reason: str|None)
+        """
+        is_dup, reason, matched_hash = self.deduplicator.is_duplicate(title, description, url)
+
+        if is_dup:
+            self.deduplicator.log_skipped(title, description, url, reason)
+            return False, reason
+
+        return True, None
+
+    def register_sent_offer(self, title, description, url=None, groups=None):
+        """Registra oferta como enviada no sistema de deduplicação."""
+        self.deduplicator.register_offer(title, description, url, groups)
