@@ -5,7 +5,7 @@
 ![Python](https://img.shields.io/badge/python-3.10+-blue)
 ![Telethon](https://img.shields.io/badge/telethon-1.33.1-orange)
 
-**Userbot inteligente para monitoramento de ofertas em canais do Telegram com alertas personalizáveis e busca retroativa.**
+**Userbot inteligente para monitoramento de ofertas em canais do Telegram com alertas personalizáveis, busca retroativa e deduplicação automática.**
 
 ---
 
@@ -29,9 +29,15 @@ A arquitetura segue princípios de **Clean Architecture** e **Separation of Conc
 - **Busca ativa retroativa (`/buscar`)**: Pesquisa últimos 7 dias em todos os grupos cadastrados
 - **Central de comando unificada**: Controle total via grupo privado sem tocar em código
 - **Rastreabilidade inteligente**: Encaminha mensagem original preservando links, fotos e botões
+- **Deduplicação automática**: Detecta ofertas duplicadas por hash exato ou similaridade fuzzy (threshold 80%)
+- **Persistência temporal**: Registro de ofertas enviadas persistido por 48h com expiração automática
+- **Auditoria completa**: Ofertas puladas registradas em `logs/ofertas-puladas.txt` com timestamp e motivo
 - **Execução autônoma (Daemon)**: Roda silenciosamente como serviço Windows via NSSM
 - **Arquitetura modular**: Handlers separados (command, message, callback), OfferService dedicado
-- **Testes automatizados**: 22 testes unitários com pytest-cov (77% cobertura)
+- **Deduplicação inteligente**: Evita envio duplicado em múltiplos grupos usando hash exato e similaridade fuzzy (80%)
+- **Persistência de registro**: Ofertas enviadas armazenadas por 48h em JSON local com expiração automática
+- **Logs de ofertas puladas**: Registro detalhado em `logs/ofertas-puladas.txt` para auditoria
+- **Testes automatizados**: 39 testes unitários com pytest-cov (cobertura ampliada)
 - **Persistência leve**: Estado em JSON local com encoding UTF-8 garantido
 
 ---
@@ -47,10 +53,11 @@ Userbot Telethon (API MTProto)
    ├── CommandHandler (comandos administrativos)
    ├── MessageHandler (mensagens recebidas)
    ├── CallbackHandler (callbacks inline - placeholder)
-   └── OfferService (lógica de grupos, alertas, busca, formatação)
+   ├── OfferService (lógica de grupos, alertas, busca, formatação)
+   └── OfferDeduplicator (deduplicação por hash e similaridade fuzzy)
    │
    ▼
-Persistência Local (data/data.json)
+Persistência Local (data/data.json + data/offers_sent.json)
    │
    ▼
 Serviço Windows (NSSM) - execução 24/7
@@ -74,14 +81,19 @@ botOfertas/
 │   │   └── callback_handler.py   # Callbacks inline (placeholder)
 │   └── services/
 │       ├── __init__.py
-│       └── offer_service.py      # Lógica principal: grupos, alertas, busca, formatação
+│       ├── offer_service.py      # Lógica principal: grupos, alertas, busca, formatação
+│       └── deduplication.py      # Deduplicação: hash exato + similaridade fuzzy
 ├── tests/
 │   ├── conftest.py          # Fixtures pytest
-│   └── test_offer_service.py  # 22 testes unitários
+│   ├── test_offer_service.py  # 22 testes unitários
+│   └── test_deduplication.py  # 17 testes unitários deduplicação
 ├── scripts/
 │   └── import_grupos.py     # Importação em massa de grupos
 ├── data/
-│   └── data.json            # Estado persistente (grupos, alertas)
+│   ├── data.json            # Estado persistente (grupos, alertas)
+│   └── offers_sent.json     # Registro de ofertas enviadas (48h)
+├── logs/
+│   └── ofertas-puladas.txt  # Log de ofertas duplicadas puladas
 ├── NSSM/                    # Non-Sucking Service Manager (Windows)
 ├── .env.example             # Referência de configuração
 ├── requirements.txt         # Dependências Python
@@ -111,10 +123,16 @@ Filtro de mensagens recebidas dos grupos monitorados. Casamento de palavras-chav
 Placeholder reservado para expansão futura com botões inline e interações via CallbackQuery.
 
 ### `app/services/offer_service.py`
-Coração da lógica de negócio: gerenciamento de grupos, alertas, busca retroativa, formatação de mensagens e consolidação de resultados.
+Coração da lógica de negócio: gerenciamento de grupos, alertas, busca retroativa, formatação de mensagens e consolidação de resultados. Integra com OfferDeduplicator para evitar envios duplicados.
+
+### `app/services/deduplication.py`
+Módulo de deduplicação inteligente. Gera hash único baseado em título + descrição + URL normalizados, detecta duplicatas por hash exato ou similaridade fuzzy (threshold 80%). Persiste registro por 48h em JSON local e loga ofertas puladas em arquivo dedicado.
 
 ### `tests/test_offer_service.py`
 Suite de 22 testes unitários cobrindo operações CRUD de grupos/alertas, busca retroativa e formatação. Fixtures em `conftest.py`.
+
+### `tests/test_deduplication.py`
+Suite de 17 testes unitários para o módulo de deduplicação: normalização de texto, geração de hash, similaridade fuzzy, detecção de duplicatas, expiração de registros e persistência.
 
 ### `scripts/import_grupos.py`
 Utilitário para importação em massa de grupos a partir de lista predefinida.
@@ -127,24 +145,27 @@ Utilitário para importação em massa de grupos a partir de lista predefinida.
 1. Usuário inicia o bot (python -m app.main ou serviço Windows)
 2. Cliente Telethon conecta com credenciais do .env
 3. Estado é carregado de data/data.json (grupos, alertas)
-4. Handlers são registrados (command, message, callback)
-5. Loop de escuta inicia - bot monitora grupos 24h
-6. Mensagem chega em grupo monitorado → MessageHandler filtra
-7. Palavra-chave casada? → Encaminha para Central de Comando com metadata
-8. Usuário digita comando no grupo → CommandHandler processa e responde
-9. Alterações persistidas em data/data.json
-10. Serviço roda continuamente via NSSM (background Windows)
+4. OfferDeduplicator carrega registro de ofertas enviadas (48h)
+5. Handlers são registrados (command, message, callback)
+6. Loop de escuta inicia - bot monitora grupos 24h
+7. Mensagem chega em grupo monitorado → MessageHandler filtra
+8. Verifica duplicidade via OfferDeduplicator (hash exato + similaridade fuzzy)
+9. Palavra-chave casada? → Encaminha para Central de Comando com metadata
+10. Usuário digita comando no grupo → CommandHandler processa e responde
+11. Alterações persistidas em data/data.json e offers_sent.json
+12. Serviço roda continuamente via NSSM (background Windows)
 ```
 
 ---
 
 ## 💾 Persistência
 
-- **Tipo**: JSON local (`data/data.json`)
+- **Tipo**: JSON local (`data/data.json` + `data/offers_sent.json`)
 - **Encoding**: UTF-8 garantido em todas as operações de I/O
-- **Estrutura**: Objeto com arrays de grupos monitorados e alertas configurados
+- **Estrutura**: Objeto com arrays de grupos monitorados, alertas configurados e registro de ofertas enviadas
 - **Backup**: Arquivo `data/data.json.bak` criado automaticamente antes de migrações
 - **Fallback**: Memória (state) durante execução, sincronizado com disco a cada alteração
+- **Expiração**: Ofertas enviadas removidas automaticamente após 48h para evitar crescimento ilimitado
 
 ---
 
@@ -173,6 +194,29 @@ Todos os comandos são executados no **Grupo de Controle** (configurado via `FOR
 | `/alertas add` | Adiciona palavra-chave                                                     | `/alertas add tv 4k`           |
 | `/alertas rm`  | Remove palavra-chave                                                       | `/alertas rm shampoo`          |
 | `/getid`       | Revela ID numérico do chat atual (útil para configurar FORWARD_TO)         | `/getid`                       |
+
+---
+
+## 🔀 Deduplicação Automática
+
+O bot possui um sistema inteligente de deduplicação que evita enviar a mesma oferta múltiplas vezes quando ela aparece em diferentes grupos.
+
+### Como Funciona
+
+1. **Hash Exato**: Gera um hash único baseado em título + descrição + URL normalizados
+2. **Similaridade Fuzzy**: Detecta ofertas semanticamente similares mesmo com pequenas variações (threshold 80%)
+3. **Persistência Temporal**: Registro mantido por 48h com expiração automática
+4. **Auditoria Completa**: Ofertas puladas registradas em `logs/ofertas-puladas.txt`
+
+### Exemplos de Detecção
+
+- **Hash Exato**: Mesma oferta enviada em `@promocoes1` e `@promocoes2` → segunda é pulada
+- **Similaridade Fuzzy**: "Notebook Dell i7 16GB" vs "Notebook Dell Core i7 16GB RAM" → detectado como ~85% similar, segunda é pulada
+- **URL Idêntica**: Mesmo link compartilhado em múltiplos grupos → apenas primeiro envio ocorre
+
+### Configuração
+
+O sistema roda automaticamente sem necessidade de configuração. Para ajustar threshold de similaridade ou período de retenção, edite `app/services/deduplication.py`.
 
 ---
 
@@ -253,7 +297,7 @@ pytest tests/ -v
 pytest tests/ --cov=app.services.offer_service --cov-report=term-missing
 ```
 
-**Resultado atual**: 22 testes passando, 77% de cobertura em `OfferService`.
+**Resultado atual**: 39 testes unitários passando (22 OfferService + 17 Deduplicação), cobertura ampliada em `OfferService` e módulo dedicado `OfferDeduplicator`.
 
 ---
 
@@ -264,6 +308,7 @@ pytest tests/ --cov=app.services.offer_service --cov-report=term-missing
 | Python            | 3.10+    | Linguagem principal                     |
 | Telethon          | 1.33.1   | API MTProto do Telegram (userbot)       |
 | python-dotenv     | latest   | Carregamento de variáveis de ambiente   |
+| thefuzz           | 0.22.1   | Similaridade fuzzy para deduplicação    |
 | pytest            | latest   | Framework de testes unitários           |
 | pytest-cov        | latest   | Cobertura de código                     |
 | Ruff              | latest   | Linting e formatação de código          |
@@ -294,6 +339,9 @@ Histórico completo em `resumo-de-trabalho.md` com IDs únicos rastreáveis.
 - **NSSM para serviço Windows**: Solução robusta e gratuita para execução 24/7 sem manter terminal aberto
 - **UTF-8 forçado**: Wrapper em sys.stdout/stderr garante encoding correto no terminal Windows (CP1252 → UTF-8)
 - **Limite de 30 resultados em `/buscar`**: Travas de segurança contra FloodWait (spam detection do Telegram)
+- **Deduplicação fuzzy**: thefuzz com threshold 80% detecta ofertas semanticamente similares entre grupos
+- **Persistência temporal**: Ofertas enviadas expiram automaticamente após 48h para evitar crescimento ilimitado
+- **Auditoria dedicada**: Log separado em `logs/ofertas-puladas.txt` para rastreamento de ofertas duplicadas
 
 ---
 
