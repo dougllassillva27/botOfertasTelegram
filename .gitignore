@@ -1,84 +1,13 @@
 
 ############################################
-# ❌ GERAL/PESSOAL
-############################################
-.env
-.env.example
-.env.*
-!.env.example
-
-.geminiignore
-.cursorrules
-
-error.log
-Single user/
-service.log
-migrate.js
-db.js
-postgre_conection.md
-reverse-migrate.sql
-.DS_Store
-tests/
-buscarContas/
-backup/
-calcularLuz/
-data/
-resumo_skills.json
-skills_completa.json
-resumo-de-trabalho.md
-Single user/
-nssm.exe
-whatch-deploy.ps1
-guia_integracao.md
-
-############################################
-# 📦 NODE.JS
-############################################
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-# Banco de dados local e Sessoes do Telegram (CRITICO)
-data/
-
-############################################
-# 🧱 BUILD / DIST / CACHE
-############################################
-dist/
-build/
-.cache/
-.next/
-.nuxt/
-out/
-coverage/
-.tmp/
-temp/
-# Ambientes Virtuais Python
-venv/
-env/
-
-############################################
-# 🧪 TESTES
-############################################
-test-results/
-playwright-report/
-blob-report/
-playwright/.cache/
-playwright/.auth/
-
-############################################
 # 🐍 PYTHON
 ############################################
-# Cache e arquivos compilados do Python
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
 *.sqlite3
 *.db
-
-# Virtual env
 venv/
 .env/
 .venv/
@@ -86,7 +15,6 @@ venv/
 ############################################
 # 📄 LOGS
 ############################################
-# Logs
 *.log
 logs/
 error.log
@@ -107,6 +35,10 @@ Thumbs.db
 *.ntvs*
 *.njsproj
 *.sln
+.cursorrules
+.geminiignore
+.aiexclude
+.claudeignore
 
 ############################################
 # 🔒 SEGURANÇA / SENSÍVEIS
@@ -116,25 +48,25 @@ Thumbs.db
 *.crt
 *.pfx
 secrets.json
+.env
+.env.*
+!.env.example
 
 ############################################
-# 📁 ARQUIVOS LOCAIS / EXPERIMENTAIS
+# 📁 ARQUIVOS LOCAIS
 ############################################
 backup/
 tmp/
 temp/
+NSSM/
+_temp_*.ps1
+.coverage
+reinicar_bot.bat
 
 ############################################
-# ⚙️ SCRIPTS LOCAIS (SE NÃO FOREM DO PROJETO)
+# 📂 DADOS LOCAIS
 ############################################
-*.ps1
-*.bat
-*.vbs
-
-# Playwright
-/test-results/
-/playwright-report/
-/blob-report/
-/playwright/.cache/
-/playwright/.auth/
-.env.example
+data/
+_contexto-ia/
+scripts/
+resumo-de-trabalho.md
