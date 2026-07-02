@@ -31,12 +31,12 @@ A arquitetura segue princípios de **Clean Architecture** e **Separation of Conc
 - **Rastreabilidade inteligente**: Encaminha mensagem original preservando links, fotos e botões
 - **Deduplicação automática**: Detecta ofertas duplicadas por hash exato ou similaridade fuzzy (threshold 80%)
 - **Persistência temporal**: Registro de ofertas enviadas persistido por 48h com expiração automática
-- **Auditoria completa**: Ofertas puladas registradas em `logs/ofertas-puladas.txt` com timestamp e motivo
+- **Auditoria completa**: Ofertas puladas registradas em `logs/Logs.txt` com timestamp e motivo
 - **Execução autônoma (Daemon)**: Roda silenciosamente como serviço Windows via NSSM
 - **Arquitetura modular**: Handlers separados (command, message, callback), OfferService dedicado
 - **Deduplicação inteligente**: Evita envio duplicado em múltiplos grupos usando hash exato e similaridade fuzzy (80%)
 - **Persistência de registro**: Ofertas enviadas armazenadas por 48h em JSON local com expiração automática
-- **Logs de ofertas puladas**: Registro detalhado em `logs/ofertas-puladas.txt` para auditoria
+- **Logs de ofertas puladas**: Registro detalhado em `logs/Logs.txt` para auditoria
 - **Testes automatizados**: 39 testes unitários com pytest-cov (cobertura ampliada)
 - **Persistência leve**: Estado em JSON local com encoding UTF-8 garantido
 
@@ -93,7 +93,7 @@ botOfertas/
 │   ├── data.json            # Estado persistente (grupos, alertas)
 │   └── offers_sent.json     # Registro de ofertas enviadas (48h)
 ├── logs/
-│   └── ofertas-puladas.txt  # Log de ofertas duplicadas puladas
+│   └── Logs.txt             # Log unificado (bot + ofertas puladas)
 ├── NSSM/                    # Non-Sucking Service Manager (Windows)
 ├── .env.example             # Referência de configuração
 ├── requirements.txt         # Dependências Python
@@ -126,7 +126,7 @@ Placeholder reservado para expansão futura com botões inline e interações vi
 Coração da lógica de negócio: gerenciamento de grupos, alertas, busca retroativa, formatação de mensagens e consolidação de resultados. Integra com OfferDeduplicator para evitar envios duplicados.
 
 ### `app/services/deduplication.py`
-Módulo de deduplicação inteligente. Gera hash único baseado em título + descrição + URL normalizados, detecta duplicatas por hash exato ou similaridade fuzzy (threshold 80%). Persiste registro por 48h em JSON local e loga ofertas puladas em arquivo dedicado.
+Módulo de deduplicação inteligente. Gera hash único baseado em título + descrição + URL normalizados, detecta duplicatas por hash exato ou similaridade fuzzy (threshold 80%). Persiste registro por 48h em JSON local e loga ofertas puladas em `logs/Logs.txt`.
 
 ### `tests/test_offer_service.py`
 Suite de 22 testes unitários cobrindo operações CRUD de grupos/alertas, busca retroativa e formatação. Fixtures em `conftest.py`.
@@ -206,7 +206,7 @@ O bot possui um sistema inteligente de deduplicação que evita enviar a mesma o
 1. **Hash Exato**: Gera um hash único baseado em título + descrição + URL normalizados
 2. **Similaridade Fuzzy**: Detecta ofertas semanticamente similares mesmo com pequenas variações (threshold 80%)
 3. **Persistência Temporal**: Registro mantido por 48h com expiração automática
-4. **Auditoria Completa**: Ofertas puladas registradas em `logs/ofertas-puladas.txt`
+4. **Auditoria Completa**: Ofertas puladas registradas em `logs/Logs.txt`
 
 ### Exemplos de Detecção
 
@@ -341,7 +341,7 @@ Histórico completo em `resumo-de-trabalho.md` com IDs únicos rastreáveis.
 - **Limite de 30 resultados em `/buscar`**: Travas de segurança contra FloodWait (spam detection do Telegram)
 - **Deduplicação fuzzy**: thefuzz com threshold 80% detecta ofertas semanticamente similares entre grupos
 - **Persistência temporal**: Ofertas enviadas expiram automaticamente após 48h para evitar crescimento ilimitado
-- **Auditoria dedicada**: Log separado em `logs/ofertas-puladas.txt` para rastreamento de ofertas duplicadas
+- **Auditoria dedicada**: Log unificado em `logs/Logs.txt` para rastreamento de ofertas duplicadas e logs do bot
 
 ---
 

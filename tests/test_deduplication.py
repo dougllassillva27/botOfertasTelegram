@@ -183,13 +183,13 @@ class TestOfferDeduplicatorLogging:
     """Testes de log de ofertas puladas."""
 
     def test_log_skipped_creates_file(self, tmp_path):
-        log_file = tmp_path / "ofertas-puladas.txt"
+        log_file = tmp_path / "Logs.txt"
         dedup = OfferDeduplicator(log_file=str(log_file))
 
         dedup.log_skipped("Oferta Teste", "Desc Teste", "https://teste.com", "hash_exato")
 
         assert log_file.exists()
         content = log_file.read_text(encoding="utf-8")
-        assert "PULADA" in content
+        assert "[PULADA]" in content
         assert "Oferta Teste" in content
         assert "hash_exato" in content

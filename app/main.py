@@ -13,8 +13,18 @@ import io
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8")
 
+# Configuração de logging unificado em Logs.txt
+from pathlib import Path
+LOGS_DIR = Path(__file__).parent.parent / "logs"
+LOGS_DIR.mkdir(parents=True, exist_ok=True)
+
 logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    handlers=[
+        logging.FileHandler(LOGS_DIR / "Logs.txt", encoding="utf-8"),
+        logging.StreamHandler()  # mantém output no console
+    ]
 )
 logger = logging.getLogger(__name__)
 

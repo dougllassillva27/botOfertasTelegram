@@ -16,8 +16,11 @@ logger = logging.getLogger(__name__)
 class OfferDeduplicator:
     """Gerencia registro de ofertas enviadas e detecta duplicatas."""
 
-    def __init__(self, data_file="data/offers_sent.json", log_file="logs/ofertas-puladas.txt"):
+    def __init__(self, data_file="data/offers_sent.json", log_file=None):
         self.data_file = Path(data_file)
+        # Usa Logs.txt unificado por padrão
+        if log_file is None:
+            log_file = str(Path(__file__).parent.parent.parent / "logs" / "Logs.txt")
         self.log_file = Path(log_file)
         self.offers = {}
         self._load_data()
@@ -140,15 +143,16 @@ class OfferDeduplicator:
         logger.info(f"Oferta registrada: hash {offer_hash[:8]}...")
 
     def log_skipped(self, title, description, url=None, reason="duplicata"):
-        """Registra oferta pulada no arquivo de log."""
+        """Registra oferta pulada no arquivo de log unificado."""
         self.log_file.parent.mkdir(parents=True, exist_ok=True)
 
-        timestamp = datetime.now(timezone(timedelta(hours=-3))).strftime("%d/%m/%Y %H:%M:%S")
+        # Formato ISO para ordenação: YYYY-MM-DD HH:MM:SS
+        timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
         url_str = url or "N/A"
 
-        log_line = f"[{timestamp}] PULADA: {title[:50]}... | URL: {url_str} | Motivo: {reason}\n"
+        log_line = f"[{timestamp}] [PULADA] {title[:50]}... | URL: {url_str} | Motivo: {reason}\n"
 
         with open(self.log_file, "a", encoding="utf-8") as f:
             f.write(log_line)
 
-        logger.debug(f"Oferta pulada registrada no log: {title[:30]}...")
+        logger.info(f"Oferta pulada (motivo: {reason}) — não reencaminhando")
