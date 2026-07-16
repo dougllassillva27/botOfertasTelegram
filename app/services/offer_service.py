@@ -7,6 +7,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 
 from app.services.deduplication import OfferDeduplicator
+from app.storage import save_data
 
 logger = logging.getLogger(__name__)
 
@@ -66,6 +67,7 @@ class OfferService:
         )
         if clean_name not in self.state["grupos"]:
             self.state["grupos"].append(clean_name)
+            save_data(self.state)
             return True, f"✅ Grupo `{clean_name}` adicionado com sucesso!"
         return False, "⚠️ Este grupo já está na lista."
 
@@ -79,6 +81,7 @@ class OfferService:
         )
         if clean_name in self.state["grupos"]:
             self.state["grupos"].remove(clean_name)
+            save_data(self.state)
             return True, f"🗑️ Grupo `{clean_name}` removido."
         return False, "⚠️ Grupo não encontrado."
 
@@ -93,6 +96,7 @@ class OfferService:
         kw = keyword.lower().strip()
         if kw not in self.state["alertas"]:
             self.state["alertas"].append(kw)
+            save_data(self.state)
             return True, f"✅ Alerta para `{kw}` adicionado com sucesso!"
         return False, "⚠️ Este alerta já está na lista."
 
