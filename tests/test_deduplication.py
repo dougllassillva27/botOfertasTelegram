@@ -12,24 +12,20 @@ from app.services.deduplication import OfferDeduplicator
 class TestOfferDeduplicatorNormalization:
     """Testes de normalização de texto."""
 
-    def test_normalize_text_lowercase(self):
-        dedup = OfferDeduplicator()
+    def test_normalize_text_lowercase(self, dedup):
         result = dedup._normalize_text("OFERTA ESPECIAL")
         assert result == "oferta especial"
 
-    def test_normalize_text_remove_extra_spaces(self):
-        dedup = OfferDeduplicator()
+    def test_normalize_text_remove_extra_spaces(self, dedup):
         result = dedup._normalize_text("  Oferta   com   espaços  ")
         assert result == "oferta com espaços"
 
-    def test_normalize_text_remove_urls(self):
-        dedup = OfferDeduplicator()
+    def test_normalize_text_remove_urls(self, dedup):
         result = dedup._normalize_text("Oferta https://exemplo.com/produto mais texto")
         assert "https://exemplo.com/produto" not in result
         assert "oferta mais texto" in result
 
-    def test_normalize_text_remove_special_chars(self):
-        dedup = OfferDeduplicator()
+    def test_normalize_text_remove_special_chars(self, dedup):
         result = dedup._normalize_text("Oferta! @#R$100%")
         assert result == "oferta r100"
 
@@ -37,20 +33,17 @@ class TestOfferDeduplicatorNormalization:
 class TestOfferDeduplicatorHashGeneration:
     """Testes de geração de hash."""
 
-    def test_generate_hash_consistent(self):
-        dedup = OfferDeduplicator()
+    def test_generate_hash_consistent(self, dedup):
         h1 = dedup.generate_hash("Oferta A", "Descrição A", "https://a.com")
         h2 = dedup.generate_hash("Oferta A", "Descrição A", "https://a.com")
         assert h1 == h2
 
-    def test_generate_hash_different_inputs(self):
-        dedup = OfferDeduplicator()
+    def test_generate_hash_different_inputs(self, dedup):
         h1 = dedup.generate_hash("Oferta A", "Desc A", "https://a.com")
         h2 = dedup.generate_hash("Oferta B", "Desc B", "https://b.com")
         assert h1 != h2
 
-    def test_generate_hash_case_insensitive(self):
-        dedup = OfferDeduplicator()
+    def test_generate_hash_case_insensitive(self, dedup):
         h1 = dedup.generate_hash("Oferta A", "Descrição A", None)
         h2 = dedup.generate_hash("oferta a", "descrição a", None)
         assert h1 == h2
@@ -59,18 +52,15 @@ class TestOfferDeduplicatorHashGeneration:
 class TestOfferDeduplicatorSimilarity:
     """Testes de similaridade fuzzy."""
 
-    def test_similarity_identical_texts(self):
-        dedup = OfferDeduplicator()
+    def test_similarity_identical_texts(self, dedup):
         sim = dedup.calculate_similarity("Oferta XYZ", "Oferta XYZ")
         assert sim == 100
 
-    def test_similarity_different_texts(self):
-        dedup = OfferDeduplicator()
+    def test_similarity_different_texts(self, dedup):
         sim = dedup.calculate_similarity("Notebook Dell", "Tênis Nike")
         assert sim < 50
 
-    def test_similarity_similar_texts(self):
-        dedup = OfferDeduplicator()
+    def test_similarity_similar_texts(self, dedup):
         sim = dedup.calculate_similarity(
             "Notebook Dell i7 16GB",
             "Notebook Dell Core i7 16GB RAM"
@@ -81,8 +71,9 @@ class TestOfferDeduplicatorSimilarity:
 class TestOfferDeduplicatorDuplicateDetection:
     """Testes de detecção de duplicatas."""
 
-    def setup_method(self):
-        self.dedup = OfferDeduplicator()
+    @pytest.fixture(autouse=True)
+    def _setup_dedup(self, dedup):
+        self.dedup = dedup
         self.dedup.offers = {}  # Limpa para testes isolados
 
     def test_is_duplicate_exact_match(self):
@@ -130,8 +121,7 @@ class TestOfferDeduplicatorDuplicateDetection:
 class TestOfferDeduplicatorExpiration:
     """Testes de expiração de registros."""
 
-    def test_cleanup_expired_offers(self):
-        dedup = OfferDeduplicator()
+    def test_cleanup_expired_offers(self, dedup):
         dedup.offers = {}
 
         # Adiciona oferta antiga (49h atrás)

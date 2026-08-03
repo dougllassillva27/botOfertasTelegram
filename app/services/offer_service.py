@@ -105,6 +105,7 @@ class OfferService:
         kw = keyword.lower().strip()
         if kw in self.state["alertas"]:
             self.state["alertas"].remove(kw)
+            save_data(self.state)
             return True, f"🗑️ Alerta para `{kw}` removido."
         return False, "⚠️ Alerta não encontrado."
 

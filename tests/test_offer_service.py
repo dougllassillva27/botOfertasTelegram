@@ -4,7 +4,7 @@ Cobre: add/remove group, add/remove alert, keyword matching, formatação.
 """
 
 from datetime import datetime, timezone, timedelta
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 
 class TestOfferServiceGroupManagement:
@@ -86,6 +86,12 @@ class TestOfferServiceAlertManagement:
         success, msg = offer_service.remove_alert("inexistente")
         assert success is False
         assert "não encontrado" in msg.lower()
+
+    def test_remove_alert_persists(self, offer_service):
+        """Remoção deve persistir em disco (regressão: alertas voltavam após restart)."""
+        with patch("app.services.offer_service.save_data") as mock_save:
+            offer_service.remove_alert("iphone")
+            mock_save.assert_called_once_with(offer_service.state)
 
     def test_get_alerts_list_empty(self, offer_service):
         """Lista vazia quando não há alertas."""
