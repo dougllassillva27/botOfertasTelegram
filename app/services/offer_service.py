@@ -57,14 +57,24 @@ class OfferService:
         chat_title = getattr(chat, "title", "Desconhecido") if chat else "Desconhecido"
         return f"📅 **Data da oferta:** {msg_date}\n📦 **Origem:** {chat_title}"
 
-    def add_group(self, group_name):
-        """Adiciona um grupo à lista de monitoramento."""
-        clean_name = (
+    @staticmethod
+    def _clean_group_name(group_name):
+        """Normaliza nome de grupo: remove URLs do Telegram e '@'."""
+        return (
             group_name.replace("https://web.telegram.org/k/#@", "")
             .replace("https://t.me/", "")
             .replace("@", "")
             .strip()
         )
+
+    @staticmethod
+    def _normalize_alert(keyword):
+        """Normaliza palavra-chave de alerta: minúsculas e sem espaços nas pontas."""
+        return keyword.lower().strip()
+
+    def add_group(self, group_name):
+        """Adiciona um grupo à lista de monitoramento."""
+        clean_name = self._clean_group_name(group_name)
         if clean_name not in self.state["grupos"]:
             self.state["grupos"].append(clean_name)
             save_data(self.state)
@@ -73,17 +83,54 @@ class OfferService:
 
     def remove_group(self, group_name):
         """Remove um grupo da lista de monitoramento."""
-        clean_name = (
-            group_name.replace("https://web.telegram.org/k/#@", "")
-            .replace("https://t.me/", "")
-            .replace("@", "")
-            .strip()
-        )
+        clean_name = self._clean_group_name(group_name)
         if clean_name in self.state["grupos"]:
             self.state["grupos"].remove(clean_name)
             save_data(self.state)
             return True, f"🗑️ Grupo `{clean_name}` removido."
         return False, "⚠️ Grupo não encontrado."
+
+    def add_groups(self, group_names):
+        """Adiciona grupos em massa. Retorna (results, changed).
+
+        results: lista de tuplas (item, ok, msg) por item processado.
+        changed: True se ao menos um grupo foi adicionado.
+        save_data é chamado uma única vez ao final, somente se changed.
+        """
+        results = []
+        changed = False
+        for raw_name in group_names:
+            clean_name = self._clean_group_name(raw_name)
+            if clean_name not in self.state["grupos"]:
+                self.state["grupos"].append(clean_name)
+                changed = True
+                results.append((clean_name, True, "adicionado com sucesso"))
+            else:
+                results.append((clean_name, False, "já está na lista"))
+        if changed:
+            save_data(self.state)
+        return results, changed
+
+    def remove_groups(self, group_names):
+        """Remove grupos em massa. Retorna (results, changed).
+
+        results: lista de tuplas (item, ok, msg) por item processado.
+        changed: True se ao menos um grupo foi removido.
+        save_data é chamado uma única vez ao final, somente se changed.
+        """
+        results = []
+        changed = False
+        for raw_name in group_names:
+            clean_name = self._clean_group_name(raw_name)
+            if clean_name in self.state["grupos"]:
+                self.state["grupos"].remove(clean_name)
+                changed = True
+                results.append((clean_name, True, "removido"))
+            else:
+                results.append((clean_name, False, "não encontrado"))
+        if changed:
+            save_data(self.state)
+        return results, changed
 
     def get_groups_list(self):
         """Retorna lista formatada dos grupos monitorados."""
@@ -93,7 +140,7 @@ class OfferService:
 
     def add_alert(self, keyword):
         """Adiciona uma palavra-chave de alerta."""
-        kw = keyword.lower().strip()
+        kw = self._normalize_alert(keyword)
         if kw not in self.state["alertas"]:
             self.state["alertas"].append(kw)
             save_data(self.state)
@@ -102,12 +149,54 @@ class OfferService:
 
     def remove_alert(self, keyword):
         """Remove uma palavra-chave de alerta."""
-        kw = keyword.lower().strip()
+        kw = self._normalize_alert(keyword)
         if kw in self.state["alertas"]:
             self.state["alertas"].remove(kw)
             save_data(self.state)
             return True, f"🗑️ Alerta para `{kw}` removido."
         return False, "⚠️ Alerta não encontrado."
+
+    def add_alerts(self, keywords):
+        """Adiciona alertas em massa. Retorna (results, changed).
+
+        results: lista de tuplas (item, ok, msg) por item processado.
+        changed: True se ao menos um alerta foi adicionado.
+        save_data é chamado uma única vez ao final, somente se changed.
+        """
+        results = []
+        changed = False
+        for raw_keyword in keywords:
+            kw = self._normalize_alert(raw_keyword)
+            if kw not in self.state["alertas"]:
+                self.state["alertas"].append(kw)
+                changed = True
+                results.append((kw, True, "adicionado com sucesso"))
+            else:
+                results.append((kw, False, "já está na lista"))
+        if changed:
+            save_data(self.state)
+        return results, changed
+
+    def remove_alerts(self, keywords):
+        """Remove alertas em massa. Retorna (results, changed).
+
+        results: lista de tuplas (item, ok, msg) por item processado.
+        changed: True se ao menos um alerta foi removido.
+        save_data é chamado uma única vez ao final, somente se changed.
+        """
+        results = []
+        changed = False
+        for raw_keyword in keywords:
+            kw = self._normalize_alert(raw_keyword)
+            if kw in self.state["alertas"]:
+                self.state["alertas"].remove(kw)
+                changed = True
+                results.append((kw, True, "removido"))
+            else:
+                results.append((kw, False, "não encontrado"))
+        if changed:
+            save_data(self.state)
+        return results, changed
 
     def get_alerts_list(self):
         """Retorna lista formatada dos alertas ativos."""

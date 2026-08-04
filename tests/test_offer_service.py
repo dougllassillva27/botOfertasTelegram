@@ -58,6 +58,71 @@ class TestOfferServiceGroupManagement:
         assert "https://" not in offer_service.state["grupos"][-1]
 
 
+class TestOfferServiceBulkGroups:
+    """Testes para gerenciamento de grupos em massa."""
+
+    def test_add_groups_all_new(self, offer_service):
+        """Adicionar vários grupos novos deve aplicar todos com 1 save."""
+        with patch("app.services.offer_service.save_data") as mock_save:
+            results, changed = offer_service.add_groups(["grupoA", "grupoB"])
+        assert changed is True
+        assert all(ok for _, ok, _ in results)
+        assert "grupoA" in offer_service.state["grupos"]
+        assert "grupoB" in offer_service.state["grupos"]
+        mock_save.assert_called_once_with(offer_service.state)
+
+    def test_add_groups_mixed(self, offer_service):
+        """Misto: novo aplicado, já existente reportado como falha."""
+        with patch("app.services.offer_service.save_data") as mock_save:
+            results, changed = offer_service.add_groups(["grupoA", "grupo1"])
+        assert changed is True
+        assert results[0] == ("grupoA", True, "adicionado com sucesso")
+        item, ok, msg = results[1]
+        assert item == "grupo1" and ok is False
+        assert "já está" in msg
+        assert "grupoA" in offer_service.state["grupos"]
+        mock_save.assert_called_once_with(offer_service.state)
+
+    def test_add_groups_all_duplicates_no_save(self, offer_service):
+        """Todos já existentes: estado inalterado e save_data não chamado."""
+        with patch("app.services.offer_service.save_data") as mock_save:
+            results, changed = offer_service.add_groups(["grupo1", "grupo2"])
+        assert changed is False
+        assert all(not ok for _, ok, _ in results)
+        assert offer_service.state["grupos"] == ["grupo1", "grupo2"]
+        mock_save.assert_not_called()
+
+    def test_remove_groups_all_existing(self, offer_service):
+        """Remover vários grupos existentes com 1 save."""
+        with patch("app.services.offer_service.save_data") as mock_save:
+            results, changed = offer_service.remove_groups(["grupo1", "grupo2"])
+        assert changed is True
+        assert all(ok for _, ok, _ in results)
+        assert offer_service.state["grupos"] == []
+        mock_save.assert_called_once_with(offer_service.state)
+
+    def test_remove_groups_mixed(self, offer_service):
+        """Misto: existentes removidos, inexistentes reportados."""
+        with patch("app.services.offer_service.save_data") as mock_save:
+            results, changed = offer_service.remove_groups(["grupo1", "fantasma"])
+        assert changed is True
+        assert results[0] == ("grupo1", True, "removido")
+        item, ok, msg = results[1]
+        assert item == "fantasma" and ok is False
+        assert "não encontrado" in msg
+        assert offer_service.state["grupos"] == ["grupo2"]
+        mock_save.assert_called_once_with(offer_service.state)
+
+    def test_add_groups_cleans_urls_per_item(self, offer_service):
+        """Sanitização aplicada por item (URL, @)."""
+        offer_service.add_groups(
+            ["https://t.me/grupoA", "@grupoB", "https://web.telegram.org/k/#@grupoC"]
+        )
+        assert "grupoA" in offer_service.state["grupos"]
+        assert "grupoB" in offer_service.state["grupos"]
+        assert "grupoC" in offer_service.state["grupos"]
+
+
 class TestOfferServiceAlertManagement:
     """Testes para gerenciamento de alertas."""
 
@@ -98,6 +163,50 @@ class TestOfferServiceAlertManagement:
         offer_service.state["alertas"] = []
         result = offer_service.get_alerts_list()
         assert "Nenhum alerta" in result
+
+
+class TestOfferServiceBulkAlerts:
+    """Testes para gerenciamento de alertas em massa."""
+
+    def test_add_alerts_mixed_with_case_normalization(self, offer_service):
+        """Normalização por item: case ignorado, espaço interno preservado."""
+        with patch("app.services.offer_service.save_data") as mock_save:
+            results, changed = offer_service.add_alerts(["IPHONE", "Teclado Mecanico"])
+        assert changed is True
+        # "IPHONE" normaliza para "iphone", que já existe
+        assert results[0][0] == "iphone" and results[0][1] is False
+        # "Teclado Mecanico" entra como novo, lowercased e com espaço preservado
+        assert results[1] == ("teclado mecanico", True, "adicionado com sucesso")
+        assert "teclado mecanico" in offer_service.state["alertas"]
+        mock_save.assert_called_once_with(offer_service.state)
+
+    def test_add_alerts_all_duplicates_no_save(self, offer_service):
+        """Todos já existentes: nada muda e save_data não chamado."""
+        with patch("app.services.offer_service.save_data") as mock_save:
+            results, changed = offer_service.add_alerts(["iphone", "notebook"])
+        assert changed is False
+        assert all(not ok for _, ok, _ in results)
+        mock_save.assert_not_called()
+
+    def test_remove_alerts_mixed(self, offer_service):
+        """Misto: existentes removidos, inexistentes reportados."""
+        with patch("app.services.offer_service.save_data") as mock_save:
+            results, changed = offer_service.remove_alerts(["IPHONE", "fantasma"])
+        assert changed is True
+        assert results[0] == ("iphone", True, "removido")
+        item, ok, msg = results[1]
+        assert item == "fantasma" and ok is False
+        assert "não encontrado" in msg
+        assert "iphone" not in offer_service.state["alertas"]
+        mock_save.assert_called_once_with(offer_service.state)
+
+    def test_bulk_empty_list(self, offer_service):
+        """Lista vazia: sem resultados, sem mutação, sem save."""
+        with patch("app.services.offer_service.save_data") as mock_save:
+            results, changed = offer_service.add_alerts([])
+        assert results == []
+        assert changed is False
+        mock_save.assert_not_called()
 
 
 class TestOfferServiceKeywordMatching:

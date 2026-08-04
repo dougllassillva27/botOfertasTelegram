@@ -13,6 +13,34 @@ class CommandHandler:
         self.client = client
         self.offer_service = offer_service
 
+    @staticmethod
+    def parse_bulk_items(text):
+        """Converte texto em lista de itens para operações em massa.
+
+        Divide por vírgula, remove espaços das pontas, descarta vazios
+        e elimina duplicatas preservando a ordem original.
+        """
+        items = []
+        for part in text.split(","):
+            item = part.strip()
+            if item and item not in items:
+                items.append(item)
+        return items
+
+    @staticmethod
+    def format_bulk_response(results, ok_emoji="✅", warn_emoji="⚠️"):
+        """Monta resposta única agrupada por status a partir dos results bulk."""
+        ok_items = [item for item, ok, _ in results if ok]
+        fail_items = [(item, msg) for item, ok, msg in results if not ok]
+
+        blocks = []
+        if ok_items:
+            blocks.append(f"{ok_emoji} **Sucesso:** " + ", ".join(f"`{i}`" for i in ok_items))
+        if fail_items:
+            fail_lines = "\n".join(f"{warn_emoji} `{item}`: {msg}" for item, msg in fail_items)
+            blocks.append(fail_lines)
+        return "\n".join(blocks)
+
     def register(self, forward_to):
         """Registra todos os handlers de comando no cliente Telegram."""
         self._register_getid()
@@ -41,11 +69,13 @@ class CommandHandler:
                 "📦 `/grupos`\n"
                 "Gerencia os canais monitorados.\n"
                 "➕ `/grupos add nomedogrupo`\n"
-                "➖ `/grupos rm nomedogrupo`\n\n"
+                "➖ `/grupos rm nomedogrupo`\n"
+                "💡 Em massa: `/grupos add grupo1, grupo2`\n\n"
                 "🔔 `/alertas`\n"
                 "Gerencia as palavras-chave monitoradas.\n"
                 "➕ `/alertas add teclado`\n"
-                "➖ `/alertas rm teclado`\n\n"
+                "➖ `/alertas rm teclado`\n"
+                "💡 Em massa: `/alertas add iphone, caixa de som`\n\n"
                 "ℹ️ `/getid`\n"
                 "Mostra o ID do chat atual para configurações."
             )
@@ -121,13 +151,24 @@ class CommandHandler:
 
             cmd = args[0].lower()
             item = " ".join(args[1:])
+            items = self.parse_bulk_items(item)
 
-            if cmd == "add" and item:
-                success, response_msg = self.offer_service.add_group(item)
-                await event.respond(response_msg)
-            elif cmd in ["rm", "del", "remove"] and item:
-                success, response_msg = self.offer_service.remove_group(item)
-                await event.respond(response_msg)
+            if cmd == "add":
+                if not items:
+                    await event.respond(
+                        "⚠️ **Uso correto:** `/grupos add grupo1, grupo2, grupo3`"
+                    )
+                else:
+                    results, _ = self.offer_service.add_groups(items)
+                    await event.respond(self.format_bulk_response(results))
+            elif cmd in ["rm", "del", "remove"]:
+                if not items:
+                    await event.respond(
+                        "⚠️ **Uso correto:** `/grupos rm grupo1, grupo2`"
+                    )
+                else:
+                    results, _ = self.offer_service.remove_groups(items)
+                    await event.respond(self.format_bulk_response(results))
 
             raise events.StopPropagation
 
@@ -153,12 +194,23 @@ class CommandHandler:
 
             cmd = args[0].lower()
             item = " ".join(args[1:])
+            items = self.parse_bulk_items(item)
 
-            if cmd == "add" and item:
-                success, response_msg = self.offer_service.add_alert(item)
-                await event.respond(response_msg)
-            elif cmd in ["rm", "del", "remove"] and item:
-                success, response_msg = self.offer_service.remove_alert(item)
-                await event.respond(response_msg)
+            if cmd == "add":
+                if not items:
+                    await event.respond(
+                        "⚠️ **Uso correto:** `/alertas add iphone, teclado mecanico`"
+                    )
+                else:
+                    results, _ = self.offer_service.add_alerts(items)
+                    await event.respond(self.format_bulk_response(results))
+            elif cmd in ["rm", "del", "remove"]:
+                if not items:
+                    await event.respond(
+                        "⚠️ **Uso correto:** `/alertas rm iphone, shampoo`"
+                    )
+                else:
+                    results, _ = self.offer_service.remove_alerts(items)
+                    await event.respond(self.format_bulk_response(results))
 
             raise events.StopPropagation
