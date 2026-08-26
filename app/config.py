@@ -16,6 +16,12 @@ API_HASH = os.getenv("API_HASH")
 session_env = os.getenv("SESSION_NAME", "userbot_session")
 SESSION_NAME = os.path.join(DATA_DIR, session_env)
 
+# Watchdog: reinicia o servico (via NSSM) se o bot ficar sem atividade.
+# O Telethon gera logs de heartbeat a cada ~15 min quando saudavel,
+# entao o default de 40 min tolera ate 2 heartbeats perdidos.
+WATCHDOG_TIMEOUT_MIN = int(os.getenv("WATCHDOG_TIMEOUT_MIN", "40"))
+WATCHDOG_CHECK_INTERVAL_MIN = int(os.getenv("WATCHDOG_CHECK_INTERVAL_MIN", "5"))
+
 # Handle the destination for forwarded messages
 forward_to_env = os.getenv("FORWARD_TO", "me")
 try:

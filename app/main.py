@@ -1,8 +1,18 @@
+import asyncio
 import logging
+from pathlib import Path
 from telethon import TelegramClient, events
-from app.config import API_ID, API_HASH, SESSION_NAME, FORWARD_TO
+from app.config import (
+    API_ID,
+    API_HASH,
+    SESSION_NAME,
+    FORWARD_TO,
+    WATCHDOG_TIMEOUT_MIN,
+    WATCHDOG_CHECK_INTERVAL_MIN,
+)
 from app.storage import load_data
 from app.services.offer_service import OfferService
+from app.services.watchdog import ActivityLoggingHandler, ActivityTracker, watchdog_loop
 from app.handlers.command_handler import CommandHandler
 from app.handlers.message_handler import MessageHandler
 from app.handlers.callback_handler import CallbackHandler
@@ -14,7 +24,6 @@ sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8")
 
 # Configuração de logging unificado em Logs.txt
-from pathlib import Path
 LOGS_DIR = Path(__file__).parent.parent / "logs"
 LOGS_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -27,6 +36,10 @@ logging.basicConfig(
     ]
 )
 logger = logging.getLogger(__name__)
+
+# Watchdog: qualquer log emitido conta como atividade
+_tracker = ActivityTracker()
+logging.getLogger().addHandler(ActivityLoggingHandler(_tracker))
 
 state = load_data()
 state.setdefault("forward_to", FORWARD_TO)
@@ -59,6 +72,17 @@ async def main():
             await message_handler.handle_message(event)
 
         logger.info("Bot is running and listening for offers! Press Ctrl+C to stop.")
+        asyncio.create_task(
+            watchdog_loop(
+                _tracker,
+                timeout_seconds=WATCHDOG_TIMEOUT_MIN * 60,
+                check_interval_seconds=WATCHDOG_CHECK_INTERVAL_MIN * 60,
+            )
+        )
+        logger.info(
+            f"Watchdog ativo: timeout={WATCHDOG_TIMEOUT_MIN}min, "
+            f"check={WATCHDOG_CHECK_INTERVAL_MIN}min"
+        )
         await client.run_until_disconnected()
 
 
