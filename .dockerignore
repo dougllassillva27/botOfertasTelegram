@@ -1,0 +1,52 @@
+# Git e versionamento
+.git/
+.gitignore
+.githooks/
+
+# Ambientes virtuais e caches Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.sqlite3
+*.db
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.coverage
+
+# Dados e logs (devem ser montados via volume para persistência)
+data/
+logs/
+*.log
+
+# Segredos e variáveis de ambiente locais
+.env
+.env.*
+!.env.example
+
+# Testes e scripts de desenvolvimento
+tests/
+scripts/
+
+# Documentação e anotações internas
+_contexto-ia/
+docs/
+versionamento/
+resumo-de-trabalho.md
+CLAUDE.md
+
+# Utilitários Windows
+NSSM/
+*.bat
+*.ps1
+
+# IDEs e editores
+.vscode/
+.idea/
+.cursorrules
+.geminiignore
+.aiexclude
+.claudeignore
+.DS_Store
+Thumbs.db

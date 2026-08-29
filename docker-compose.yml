@@ -1,0 +1,19 @@
+services:
+  bot-ofertas:
+    build: .
+    container_name: bot-ofertas-telegram
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - TZ=America/Sao_Paulo
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+    stdin_open: true
+    tty: true
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"

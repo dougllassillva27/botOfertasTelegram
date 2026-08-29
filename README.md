@@ -287,6 +287,47 @@ Para gerenciar serviço:
 
 ---
 
+## 🐳 Como Rodar na VPS via Docker
+
+### 1. Transferir os arquivos para a VPS
+Clone o repositório ou envie os arquivos para a VPS (certifique-se de ter Docker e Docker Compose instalados):
+```bash
+# Na VPS:
+git clone <URL_DO_REPOSITORIO> botOfertas
+cd botOfertas
+```
+
+### 2. Configurar o `.env`
+Crie o arquivo `.env` na VPS com suas credenciais:
+```bash
+cp .env.example .env
+nano .env  # ou vim .env
+```
+
+### 3. Autenticação inicial (Sessão Telegram)
+- **Opção A (Recomendada - Migração)**: Copie sua pasta `data/` local (que já contém o arquivo `.session` e `data.json`) para a pasta `data/` da VPS.
+- **Opção B (Novo login interativo via Docker)**: Execute o container uma vez interativamente para autenticar via terminal:
+```bash
+docker compose run --rm bot-ofertas
+# Digite seu telefone, código SMS recebido e senha 2FA se solicitada
+```
+Após o login, a sessão será salva automaticamente no volume persistente `./data`.
+
+### 4. Iniciar o Bot em Background (24/7)
+```bash
+docker compose up -d --build
+```
+
+### 5. Comandos Úteis do Docker
+- **Ver logs em tempo real**: `docker compose logs -f`
+- **Reiniciar o bot**: `docker compose restart`
+- **Parar o bot**: `docker compose down`
+- **Atualizar código**: `git pull && docker compose up -d --build`
+
+> 💡 **Nota sobre Auto-Healing**: O watchdog embutido encerrará o processo caso a conexão do Telegram trave. Como o container está configurado com `restart: unless-stopped`, o Docker cuidará automaticamente de reiniciar o bot.
+
+---
+
 ## 🧪 Testes
 
 ```bash
