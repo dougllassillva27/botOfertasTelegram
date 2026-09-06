@@ -4,7 +4,7 @@ Watchdog de atividade do bot.
 Monitora o ultimo log emitido (heartbeat). O Telethon gera logs a cada
 ~15 minutos quando a conexao esta saudavel. Se nenhuma atividade ocorrer
 dentro do timeout configurado, o processo e encerrado com codigo 1 para
-que o NSSM reinicie o servico automaticamente.
+que o Docker restart policy (unless-stopped) reinicie o container automaticamente.
 """
 
 import asyncio
@@ -50,10 +50,10 @@ class ActivityLoggingHandler(logging.Handler):
 
 
 def _default_on_timeout():
-    """Encerra o processo para o NSSM reiniciar o servico."""
+    """Encerra o processo para o Docker restart policy reiniciar o container."""
     logger.critical(
         "Watchdog: nenhuma atividade dentro do timeout. "
-        "Encerrando processo para reinicio pelo NSSM."
+        "Encerrando processo para reinicio pelo Docker restart policy."
     )
     os._exit(1)
 
