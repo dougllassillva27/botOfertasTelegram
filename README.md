@@ -43,7 +43,7 @@ A persistência é JSON local (sem banco de dados externo), e a execução cont�
 - **Auditoria** — ofertas puladas registradas em `logs/Logs.txt` com timestamp e motivo
 - **Watchdog** — mata o processo se ficar sem atividade; o Docker o reinicia
 - **Arquitetura modular** — handlers separados, serviços dedicados, sem monólito
-- **90 testes unitários** — pytest, cobrindo serviços, handlers, deduplicação, watchdog e envio WhatsApp
+- **95 testes unitários** — pytest, cobrindo serviços, handlers, deduplicação, watchdog e envio WhatsApp
 
 ---
 
@@ -95,7 +95,7 @@ botOfertas/
 |       |-- offer_service.py      # Grupos, alertas, flags, busca
 |       |-- deduplication.py      # Hash exato + fuzzy, expiracao 48h
 |       +-- whatsapp_sender.py    # POST na ponte do WhatsApp com mencao
-|-- tests/                       # 90 testes unitarios (pytest)
+|-- tests/                       # 95 testes unitarios (pytest)
 |-- data/                        # Estado + sessao (gitignored)
 |-- logs/                        # Logs.txt unificado (gitignored)
 |-- docs/                        # Documentacao de design
@@ -136,7 +136,7 @@ Gera hash a partir de título + descrição + URL normalizados. Detecta duplicat
 Único módulo que conhece a API da ponte do WhatsApp. Monta o texto da oferta (com o handle de menção no corpo — obrigatório para a menção renderizar) e faz o POST `/send` com o campo `mentions`.
 
 ### `tests/`
-90 testes unitários: `offer_service` (33), `deduplication` (17), `command_handler` (10), `watchdog` (8), `whatsapp_flag` (8), `whatsapp_sender` (7), `callback_handler` (4), `message_whatsapp` (3).
+95 testes unitários: `offer_service` (33), `deduplication` (17), `command_handler` (10), `watchdog` (8), `whatsapp_flag` (8), `whatsapp_sender` (7), `storage_backup` (5), `callback_handler` (4), `message_whatsapp` (3).
 
 ---
 
@@ -271,7 +271,7 @@ git pull && docker compose up -d --build   # atualizar
 
 ```bash
 cd botOfertas
-.venv/bin/python -m pytest tests/ -q        # suite completa (90 testes)
+.venv/bin/python -m pytest tests/ -q        # suite completa (95 testes)
 .venv/bin/python -m pytest tests/ -v        # verboso
 ```
 
@@ -332,6 +332,7 @@ O registro completo (contexto, alternativas descartadas, consequências) está e
 ## Persistência
 
 - **Estado** (`data/data.json`): grupos monitorados, alertas e flags WhatsApp
+- **Backup automático**: `save_data` grava `data.json.bak-<timestamp>` antes de cada escrita, mantendo os 10 mais recentes (`BACKUP_KEEP`) — blindagem contra sobrescrita acidental
 - **Registro de ofertas** (`data/offers_sent.json`): hash das ofertas enviadas, expira em 48h
 - **Sessão** (`data/*.session`): credencial Telethon persistida após o primeiro login
 - **Encoding**: UTF-8 explícito em todas as operações de I/O
