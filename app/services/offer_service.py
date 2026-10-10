@@ -147,11 +147,41 @@ class OfferService:
             return True, f"✅ Alerta para `{kw}` adicionado com sucesso!"
         return False, "⚠️ Este alerta já está na lista."
 
+    def _get_whatsapp_flags(self):
+        """Retorna a lista de alertas marcados para WhatsApp (tolerante a estado antigo)."""
+        return self.state.setdefault("alertas_whatsapp", [])
+
+    def has_whatsapp_flag(self, keyword):
+        """Verifica se o alerta está marcado para também ir pro WhatsApp."""
+        kw = self._normalize_alert(keyword)
+        return kw in self._get_whatsapp_flags()
+
+    def set_whatsapp_flag(self, keyword, enabled=True):
+        """Liga ou desliga a marca WhatsApp de um alerta existente."""
+        kw = self._normalize_alert(keyword)
+        if kw not in self.state["alertas"]:
+            return False, f"⚠️ Alerta `{kw}` não encontrado."
+        flags = self._get_whatsapp_flags()
+        if enabled:
+            if kw in flags:
+                return False, f"⚠️ `{kw}` já vai pro WhatsApp 📲."
+            flags.append(kw)
+            save_data(self.state)
+            return True, f"✅ `{kw}` agora também vai pro WhatsApp 📲"
+        if kw not in flags:
+            return False, f"⚠️ `{kw}` não estava indo pro WhatsApp."
+        flags.remove(kw)
+        save_data(self.state)
+        return True, f"✅ `{kw}` voltou a ir só pro Telegram."
+
     def remove_alert(self, keyword):
-        """Remove uma palavra-chave de alerta."""
+        """Remove uma palavra-chave de alerta (e sua marca WhatsApp)."""
         kw = self._normalize_alert(keyword)
         if kw in self.state["alertas"]:
             self.state["alertas"].remove(kw)
+            flags = self._get_whatsapp_flags()
+            if kw in flags:
+                flags.remove(kw)
             save_data(self.state)
             return True, f"🗑️ Alerta para `{kw}` removido."
         return False, "⚠️ Alerta não encontrado."
@@ -190,6 +220,9 @@ class OfferService:
             kw = self._normalize_alert(raw_keyword)
             if kw in self.state["alertas"]:
                 self.state["alertas"].remove(kw)
+                flags = self._get_whatsapp_flags()
+                if kw in flags:
+                    flags.remove(kw)
                 changed = True
                 results.append((kw, True, "removido"))
             else:

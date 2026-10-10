@@ -4,6 +4,7 @@ Handler de mensagens — monitora grupos e encaminha ofertas com alertas.
 
 import logging
 from datetime import timezone, timedelta
+from app.services.whatsapp_sender import send_offer_to_whatsapp
 
 logger = logging.getLogger(__name__)
 
@@ -80,3 +81,10 @@ class MessageHandler:
                 reply_to=fw_msg,
                 silent=True,
             )
+
+            # Destino extra: keyword marcada como prioritária também vai pro WhatsApp
+            if self.offer_service.has_whatsapp_flag(matched_keyword):
+                try:
+                    send_offer_to_whatsapp(message_text, chat_title, event.message.date)
+                except Exception as e:
+                    logger.warning(f"Falha ao enviar oferta pro WhatsApp: {e}")

@@ -1,418 +1,399 @@
-# 🤖 Bot de Ofertas Telegram (Garimpo Automático)
+# Bot de Ofertas — Garimpo Automático de Promoções (Telegram + WhatsApp)
 
 ![Status](https://img.shields.io/badge/status-active-success)
 ![License](https://img.shields.io/badge/license-MIT-blue)
-![Python](https://img.shields.io/badge/python-3.10+-blue)
+![Python](https://img.shields.io/badge/python-3.11-blue)
 ![Telethon](https://img.shields.io/badge/telethon-1.33.1-orange)
 
-**Userbot inteligente para monitoramento de ofertas em canais do Telegram com alertas personalizáveis, busca retroativa e deduplicação automática.**
+**Userbot MTProto que monitora dezenas de canais de ofertas em tempo real, filtra por palavras-chave configuráveis e encaminha apenas as promoções relevantes — com rota extra opcional para WhatsApp (menção nativa) nas ofertas prioritárias.**
 
 ---
 
-## 🔗 Demo
+## Descrição
 
-O bot roda localmente no seu computador como serviço Windows, acessando sua conta pessoal do Telegram via API MTProto.
+O Bot de Ofertas atua como garimpeiro pessoal. Ele escuta continuamente os grupos monitorados, aplica as keywords de alerta cadastradas e encaminha cada oferta capturada para a Central de Comando (grupo privado no Telegram). Keywords marcadas como prioritárias também são entregues num grupo do WhatsApp, com menção nativa no dono.
 
----
-
-## 📋 Visão Geral Técnica
-
-Bot de Ofertas é um **userbot avançado** construído com Telethon que atua como "garimpeiro" pessoal. Ele monitora dezenas de canais de ofertas simultaneamente em tempo real, filtra mensagens por palavras-chave configuráveis e encaminha apenas as promoções relevantes para uma Central de Comando (seu grupo privado). Além disso, permite buscas retroativas em histórico de 7 dias consolidado em todos os grupos monitorados.
-
-A arquitetura segue princípios de **Clean Architecture** e **Separation of Concerns**, com handlers modulares, serviço dedicado para lógica de negócio e persistência JSON local.
+Também oferece busca retroativa de 7 dias em todos os grupos cadastrados e deduplicação automática (hash exato + similaridade fuzzy).
 
 ---
 
-## ⚙️ Highlights Técnicos
+## Visão Geral Técnica
 
-- **Monitoramento passivo 24h**: Escuta grupos continuamente via Telethon API MTProto
-- **Busca ativa retroativa (`/buscar`)**: Pesquisa últimos 7 dias em todos os grupos cadastrados
-- **Central de comando unificada**: Controle total via grupo privado sem tocar em código
-- **Rastreabilidade inteligente**: Encaminha mensagem original preservando links, fotos e botões
-- **Deduplicação automática**: Detecta ofertas duplicadas por hash exato ou similaridade fuzzy (threshold 80%)
-- **Persistência temporal**: Registro de ofertas enviadas persistido por 48h com expiração automática
-- **Auditoria completa**: Ofertas puladas registradas em `logs/Logs.txt` com timestamp e motivo
-- **Execução autônoma (Daemon)**: Roda silenciosamente como serviço Windows via NSSM
-- **Arquitetura modular**: Handlers separados (command, message, callback), OfferService dedicado
-- **Deduplicação inteligente**: Evita envio duplicado em múltiplos grupos usando hash exato e similaridade fuzzy (80%)
-- **Persistência de registro**: Ofertas enviadas armazenadas por 48h em JSON local com expiração automática
-- **Logs de ofertas puladas**: Registro detalhado em `logs/Logs.txt` para auditoria
-- **Testes automatizados**: 39 testes unitários com pytest-cov (cobertura ampliada)
-- **Persistência leve**: Estado em JSON local com encoding UTF-8 garantido
+Construído sobre **Telethon** (API MTProto), o bot opera como userbot — ou seja, acessa a conta pessoal do Telegram, o que permite ler mensagens de qualquer grupo ao qual a conta pertence (algo impossível para bots normais da Bot API).
+
+A arquitetura isola quatro responsabilidades:
+
+- **Handlers** — recepção e roteamento de eventos (comandos, mensagens, callbacks)
+- **OfferService** — lógica de negócio (grupos, alertas, busca, formatação)
+- **OfferDeduplicator** — detecção de duplicatas por hash e fuzzy
+- **whatsapp_sender** — entrega opcional via ponte local do WhatsApp
+
+A persistência é JSON local (sem banco de dados externo), e a execução contínua é garantida por um watchdog que encerra o processo quando a conexão trava — o `restart: unless-stopped` do Docker o religa.
 
 ---
 
-## 🏗️ Arquitetura
+## Highlights Técnicos
+
+- **Monitoramento contínuo 24h** — escuta passiva via MTProto em todos os grupos cadastrados
+- **Alertas por palavra-chave** — casamento por regex com plural tolerante (`\bkw(s?)\b`)
+- **Rota WhatsApp opcional** — keyword marcada vai para Telegram **e** WhatsApp, com menção nativa
+- **Busca retroativa (`/buscar`)** — varredura dos últimos 7 dias em todos os grupos, limitada a 30 resultados contra FloodWait
+- **Deduplicação em duas camadas** — hash exato (título+descrição+URL normalizados) e similaridade fuzzy (thefuzz, threshold 80%)
+- **Persistência temporal** — registro de ofertas enviadas expira em 48h
+- **Auditoria** — ofertas puladas registradas em `logs/Logs.txt` com timestamp e motivo
+- **Watchdog** — mata o processo se ficar sem atividade; o Docker o reinicia
+- **Arquitetura modular** — handlers separados, serviços dedicados, sem monólito
+- **90 testes unitários** — pytest, cobrindo serviços, handlers, deduplicação, watchdog e envio WhatsApp
+
+---
+
+## Arquitetura
 
 ```
-Navegador / App Telegram
-   │
-   ▼
-Userbot Telethon (API MTProto)
-   │
-   ├── CommandHandler (comandos administrativos)
-   ├── MessageHandler (mensagens recebidas)
-   ├── CallbackHandler (callbacks inline - placeholder)
-   ├── OfferService (lógica de grupos, alertas, busca, formatação)
-   └── OfferDeduplicator (deduplicação por hash e similaridade fuzzy)
-   │
-   ▼
-Persistência Local (data/data.json + data/offers_sent.json)
-   │
-   ▼
-Serviço Windows (NSSM) - execução 24/7
+Grupos monitorados (Telegram)
+        |
+        v
+Userbot Telethon (MTProto)
+        |
+        +-- CommandHandler   /comandos /buscar /grupos /alertas /getid
+        |                       |
+        |                       +-- botoes inline (confirmacao WhatsApp)
+        |
+        +-- MessageHandler   filtra por keyword + dedup
+        |        |
+        |        +---> Telegram: encaminha para Central de Comando
+        |        |
+        |        +---> WhatsApp: se keyword marcada, envia para o grupo
+        |                     do Sol com mencao nativa (via ponte :3001)
+        |
+        +-- CallbackHandler  processa cliques nos botoes inline
+        |
+        +-- OfferService     grupos, alertas, flags whatsapp, busca
+        +-- OfferDeduplicator  hash exato + fuzzy, expira em 48h
+        |
+        v
+Persistencia JSON (data/data.json, data/offers_sent.json)
 ```
+
+**Canal WhatsApp:** o envio não usa a Bot API do WhatsApp. O `whatsapp_sender` faz um POST direto na ponte local (`127.0.0.1:3001`) que roda no host e detém a sessão WhatsApp. Por isso o container precisa de `network_mode: host`.
 
 ---
 
-## 📁 Estrutura do Projeto
+## Estrutura do Projeto
 
 ```
 botOfertas/
-├── app/
-│   ├── __init__.py
-│   ├── main.py              # Entry point, inicializa client e handlers
-│   ├── config.py            # Variáveis de ambiente (.env)
-│   ├── storage.py           # Persistência JSON local
-│   ├── handlers/
-│   │   ├── __init__.py
-│   │   ├── command_handler.py    # /addgroup, /removegroup, /addalert, etc.
-│   │   ├── message_handler.py    # Handler de mensagens recebidas
-│   │   └── callback_handler.py   # Callbacks inline (placeholder)
-│   └── services/
-│       ├── __init__.py
-│       ├── offer_service.py      # Lógica principal: grupos, alertas, busca, formatação
-│       └── deduplication.py      # Deduplicação: hash exato + similaridade fuzzy
-├── tests/
-│   ├── conftest.py          # Fixtures pytest
-│   ├── test_offer_service.py  # 22 testes unitários
-│   └── test_deduplication.py  # 17 testes unitários deduplicação
-├── scripts/
-│   └── import_grupos.py     # Importação em massa de grupos
-├── data/
-│   ├── data.json            # Estado persistente (grupos, alertas)
-│   └── offers_sent.json     # Registro de ofertas enviadas (48h)
-├── logs/
-│   └── Logs.txt             # Log unificado (bot + ofertas puladas)
-├── NSSM/                    # Non-Sucking Service Manager (Windows)
-├── .env.example             # Referência de configuração
-├── requirements.txt         # Dependências Python
-└── resumo-de-trabalho.md    # Diário de bordo do desenvolvimento
+|-- app/
+|   |-- main.py                  # Entry point: client, handlers, watchdog
+|   |-- config.py                # Variaveis de ambiente (.env)
+|   |-- storage.py               # Persistencia JSON
+|   |-- handlers/
+|   |   |-- command_handler.py    # Comandos + botoes inline de confirmacao
+|   |   |-- message_handler.py    # Filtro de keyword + rota WhatsApp
+|   |   +-- callback_handler.py   # Cliques nos botoes (wa_sim / wa_nao)
+|   +-- services/
+|       |-- offer_service.py      # Grupos, alertas, flags, busca
+|       |-- deduplication.py      # Hash exato + fuzzy, expiracao 48h
+|       +-- whatsapp_sender.py    # POST na ponte do WhatsApp com mencao
+|-- tests/                       # 90 testes unitarios (pytest)
+|-- data/                        # Estado + sessao (gitignored)
+|-- logs/                        # Logs.txt unificado (gitignored)
+|-- docs/                        # Documentacao de design
+|-- Dockerfile
+|-- docker-compose.yml           # Compose do projeto (secundario)
++-- requirements.txt
 ```
 
 ---
 
-## 🎯 Responsabilidades por Pasta/Módulo
+## Responsabilidades por Módulo
 
 ### `app/main.py`
-Entry point da aplicação. Inicializa cliente Telethon, carrega estado, registra handlers e inicia loop de escuta. Wrapper UTF-8 para terminal Windows.
+Entry point. Inicializa o client Telethon, carrega o estado, registra os handlers (comandos, callbacks, mensagens), sobe o watchdog e mantém o loop de escuta. Aplica wrapper UTF-8 em stdout/stderr.
 
 ### `app/config.py`
-Carregamento de variáveis de ambiente via `.env` usando python-dotenv. Validação de credenciais API_ID/API_HASH.
+Lê `API_ID`, `API_HASH`, `SESSION_NAME`, `FORWARD_TO` e os timeouts do watchdog a partir do `.env` (python-dotenv). Resolve o caminho absoluto da sessão dentro de `data/`.
 
 ### `app/storage.py`
-Camada de persistência JSON. Load/save de estado (grupos, alertas) com encoding UTF-8 explícito.
+Camada de persistência. `load_data` cria o `data.json` com estado padrão na primeira execução; `save_data` grava com indentação e UTF-8.
 
 ### `app/handlers/command_handler.py`
-Registro e processamento de comandos administrativos: `/addgroup`, `/removegroup`, `/addalert`, `/removealert`, `/status`, `/search`, `/getid`.
+Registra e processa os comandos do grupo de controle. `add` de alerta anexa os botões inline de confirmação WhatsApp; `/alertas wa` liga/desliga a marca de uma keyword.
 
 ### `app/handlers/message_handler.py`
-Filtro de mensagens recebidas dos grupos monitorados. Casamento de palavras-chave e encaminhamento para Central de Comando.
+Filtra mensagens dos grupos monitorados, aplica deduplicação, casa a keyword e encaminha para o Telegram. Se a keyword estiver marcada como prioritária, também dispara o envio para o WhatsApp (falha na ponte não interrompe o fluxo do Telegram).
 
 ### `app/handlers/callback_handler.py`
-Placeholder reservado para expansão futura com botões inline e interações via CallbackQuery.
+Processa os cliques nos botões inline (`wa_sim:<kw>` / `wa_nao:<kw>`), alternando a flag WhatsApp da keyword e editando a mensagem para remover os botões.
 
 ### `app/services/offer_service.py`
-Coração da lógica de negócio: gerenciamento de grupos, alertas, busca retroativa, formatação de mensagens e consolidação de resultados. Integra com OfferDeduplicator para evitar envios duplicados.
+Núcleo da lógica de negócio: CRUD de grupos e alertas, flags de prioridade WhatsApp, busca retroativa de 7 dias e formatação das mensagens. Delega deduplicação ao `OfferDeduplicator`.
 
 ### `app/services/deduplication.py`
-Módulo de deduplicação inteligente. Gera hash único baseado em título + descrição + URL normalizados, detecta duplicatas por hash exato ou similaridade fuzzy (threshold 80%). Persiste registro por 48h em JSON local e loga ofertas puladas em `logs/Logs.txt`.
+Gera hash a partir de título + descrição + URL normalizados. Detecta duplicatas por hash exato ou similaridade fuzzy (threshold 80%). Mantém o registro por 48h e loga ofertas puladas.
 
-### `tests/test_offer_service.py`
-Suite de 22 testes unitários cobrindo operações CRUD de grupos/alertas, busca retroativa e formatação. Fixtures em `conftest.py`.
+### `app/services/whatsapp_sender.py`
+Único módulo que conhece a API da ponte do WhatsApp. Monta o texto da oferta (com o handle de menção no corpo — obrigatório para a menção renderizar) e faz o POST `/send` com o campo `mentions`.
 
-### `tests/test_deduplication.py`
-Suite de 17 testes unitários para o módulo de deduplicação: normalização de texto, geração de hash, similaridade fuzzy, detecção de duplicatas, expiração de registros e persistência.
-
-### `scripts/import_grupos.py`
-Utilitário para importação em massa de grupos a partir de lista predefinida.
+### `tests/`
+90 testes unitários: `offer_service` (33), `deduplication` (17), `command_handler` (10), `watchdog` (8), `whatsapp_flag` (8), `whatsapp_sender` (7), `callback_handler` (4), `message_whatsapp` (3).
 
 ---
 
-## 🔄 Fluxo Principal da Aplicação
+## Fluxo Principal
 
 ```
-1. Usuário inicia o bot (python -m app.main ou serviço Windows)
-2. Cliente Telethon conecta com credenciais do .env
-3. Estado é carregado de data/data.json (grupos, alertas)
-4. OfferDeduplicator carrega registro de ofertas enviadas (48h)
-5. Handlers são registrados (command, message, callback)
-6. Loop de escuta inicia - bot monitora grupos 24h
-7. Mensagem chega em grupo monitorado → MessageHandler filtra
-8. Verifica duplicidade via OfferDeduplicator (hash exato + similaridade fuzzy)
-9. Palavra-chave casada? → Encaminha para Central de Comando com metadata
-10. Usuário digita comando no grupo → CommandHandler processa e responde
-11. Alterações persistidas em data/data.json e offers_sent.json
-12. Serviço roda continuamente via NSSM (background Windows)
+1. Bot inicia e conecta via MTProto com as credenciais do .env
+2. Estado carregado de data/data.json (grupos, alertas, flags WhatsApp)
+3. Registro de ofertas enviadas carregado (expira em 48h)
+4. Handlers registrados; loop de escuta inicia
+5. Mensagem chega em grupo monitorado
+6. Deduplicacao verifica hash exato + fuzzy
+7. Keyword casou? Encaminha para o Telegram com metadata de origem
+8. Keyword marcada como prioritaria? Envia tambem para o WhatsApp
+   com mencao nativa (via ponte local)
+9. Comando digitado no grupo de controle? CommandHandler responde
+10. Alteracoes persistidas em data/data.json
 ```
 
 ---
 
-## 💾 Persistência
+## Tecnologias
 
-- **Tipo**: JSON local (`data/data.json` + `data/offers_sent.json`)
-- **Encoding**: UTF-8 garantido em todas as operações de I/O
-- **Estrutura**: Objeto com arrays de grupos monitorados, alertas configurados e registro de ofertas enviadas
-- **Backup**: Arquivo `data/data.json.bak` criado automaticamente antes de migrações
-- **Fallback**: Memória (state) durante execução, sincronizado com disco a cada alteração
-- **Expiração**: Ofertas enviadas removidas automaticamente após 48h para evitar crescimento ilimitado
+| Tecnologia      | Versão   | Responsabilidade                            |
+| --------------- | -------- | ------------------------------------------- |
+| Python          | 3.11     | Linguagem principal (imagem do Docker)      |
+| Telethon        | 1.33.1   | API MTProto do Telegram (userbot)           |
+| python-dotenv   | 1.0.1    | Carregamento de variáveis de ambiente       |
+| thefuzz         | 0.22.1   | Similaridade fuzzy para deduplicação        |
+| pytest          | latest   | Framework de testes unitários               |
+| Ruff            | latest   | Linting e análise estática                  |
+| Docker          | compose  | Empacotamento e execução contínua           |
 
----
-
-## 🔒 Segurança e Privacidade
-
-- **Credenciais**: Armazenadas em `.env` (não versionado pelo git). API_ID e API_HASH obtidos em my.telegram.org
-- **Autenticação**: Login via código SMS enviado pelo Telegram na primeira execução (sessão persistida em `.session`)
-- **2FA**: Suporte a senha de duas etapas se configurada na conta
-- **Escopo**: Bot vinculado à conta pessoal do usuário. Se grupo banir a conta, bot perde acesso às ofertas
-- **Dados sensíveis**: `.env` e arquivos `.session` excluídos do git via `.gitignore`
+`pytest` e `ruff` são dependências de desenvolvimento — não estão no `requirements.txt` (que contém apenas o runtime).
 
 ---
 
-## 🎮 Sistema de Comandos
+## Variáveis de Ambiente
 
-Todos os comandos são executados no **Grupo de Controle** (configurado via `FORWARD_TO` no `.env`). Somente o dono da conta (usuário "me") pode acioná-los:
+Definidas em `.env` (não versionado; `!.env.example` é o template).
 
-| Comando        | Função                                                                      | Exemplo                        |
-| :------------- | :-------------------------------------------------------------------------- | :----------------------------- |
-| `/comandos`    | Lista painel de ajuda completo                                             | `/comandos`                    |
-| `/buscar`      | Varredura retroativa nos últimos 7 dias                                    | `/buscar notebook`             |
-| `/grupos`      | Lista grupos vigiados                                                       | `/grupos`                      |
-| `/grupos add`  | Adiciona grupo à vigilância                                                | `/grupos add @nomedocanal`     |
-| `/grupos rm`   | Remove grupo da vigilância                                                 | `/grupos rm nomedocanal`       |
-| `/alertas`     | Lista palavras-chave ativas                                                | `/alertas`                     |
-| `/alertas add` | Adiciona palavra-chave                                                     | `/alertas add tv 4k`           |
-| `/alertas rm`  | Remove palavra-chave                                                       | `/alertas rm shampoo`          |
-| `/getid`       | Revela ID numérico do chat atual (útil para configurar FORWARD_TO)         | `/getid`                       |
+| Variável        | Obrigatória | Descrição                                                        |
+| --------------- | ----------- | ---------------------------------------------------------------- |
+| `API_ID`        | Sim         | App api_id de my.telegram.org                                     |
+| `API_HASH`      | Sim         | App api_hash de my.telegram.org                                  |
+| `SESSION_NAME`  | Não         | Nome da sessão Telethon (padrão: `userbot_session`)              |
+| `FORWARD_TO`    | Não         | Destino das ofertas: `me`, ID numérico ou `@username` (padrão `me`) |
+| `WATCHDOG_TIMEOUT_MIN`      | Não | Minutos sem atividade antes de matar o processo (padrão 40) |
+| `WATCHDOG_CHECK_INTERVAL_MIN` | Não | Intervalo de checagem do watchdog (padrão 5)          |
 
----
-
-## 🔀 Deduplicação Automática
-
-O bot possui um sistema inteligente de deduplicação que evita enviar a mesma oferta múltiplas vezes quando ela aparece em diferentes grupos.
-
-### Como Funciona
-
-1. **Hash Exato**: Gera um hash único baseado em título + descrição + URL normalizados
-2. **Similaridade Fuzzy**: Detecta ofertas semanticamente similares mesmo com pequenas variações (threshold 80%)
-3. **Persistência Temporal**: Registro mantido por 48h com expiração automática
-4. **Auditoria Completa**: Ofertas puladas registradas em `logs/Logs.txt`
-
-### Exemplos de Detecção
-
-- **Hash Exato**: Mesma oferta enviada em `@promocoes1` e `@promocoes2` → segunda é pulada
-- **Similaridade Fuzzy**: "Notebook Dell i7 16GB" vs "Notebook Dell Core i7 16GB RAM" → detectado como ~85% similar, segunda é pulada
-- **URL Idêntica**: Mesmo link compartilhado em múltiplos grupos → apenas primeiro envio ocorre
-
-### Configuração
-
-O sistema roda automaticamente sem necessidade de configuração. Para ajustar threshold de similaridade ou período de retenção, edite `app/services/deduplication.py`.
+Para a rota WhatsApp, o `whatsapp_sender` aceita override por env (`WHATSAPP_BRIDGE_URL`, `WHATSAPP_GROUP_ID`, `WHATSAPP_MENTION_JID`, `WHATSAPP_BRIDGE_TIMEOUT`); os valores padrão já apontam para a ponte local e o grupo do Sol.
 
 ---
 
-## 🚀 Como Rodar Localmente
+## Como Rodar Localmente
 
 ### Pré-requisitos
 
-1. **Python 3.10+** instalado
-2. **Conta ativa no Telegram** (para gerar credenciais de desenvolvedor)
-3. **Grupo privado no Telegram** (servirá como Central de Comando)
+1. Python 3.11+
+2. Conta ativa no Telegram (para gerar credenciais de desenvolvedor)
+3. Um grupo privado no Telegram (servirá como Central de Comando)
 
-### Passo 1: Obter Credenciais do Telegram
+### 1. Obter credenciais
 
-1. Acesse [my.telegram.org](https://my.telegram.org) e faça login com seu número
-2. Clique em **"API development tools"**
-3. Preencha formulário (título arbitrário, plataforma "Desktop" ou "Other")
-4. Anote **`App api_id`** (número) e **`App api_hash`** (texto longo)
+Acesse [my.telegram.org](https://my.telegram.org), faça login com seu número, abra **API development tools** e anote `App api_id` e `App api_hash`.
 
-### Passo 2: Configurar Ambiente
+### 2. Configurar ambiente
 
 ```bash
-# Clonar ou baixar projeto
 cd botOfertas
 
-# Criar ambiente virtual (opcional, mas recomendado)
-python -m venv venv
-venv\Scripts\activate  # Windows
-# source venv/bin/activate  # Linux/Mac
+python -m venv .venv
+source .venv/bin/activate        # Linux/macOS
+# .venv\Scripts\activate         # Windows
 
-# Instalar dependências
 pip install -r requirements.txt
+pip install pytest               # apenas para rodar os testes
 
-# Criar .env baseado no exemplo
 cp .env.example .env
-
-# Editar .env com suas credenciais
-# API_ID=12345678
-# API_HASH=seu_hash_gigante_aqui
-# SESSION_NAME=meu_userbot
-# FORWARD_TO=-1001234567890  # ID do seu grupo privado
+# edite .env com API_ID, API_HASH e FORWARD_TO
 ```
 
-### Passo 3: Primeiro Login (Gerar Sessão)
+### 3. Primeiro login (gerar sessão)
 
 ```bash
 python -m app.main
 ```
 
-O terminal pedirá:
-1. Número de telefone (com DDI +55 e DDD)
-2. Código de verificação enviado pelo Telegram
-3. Senha 2FA (se configurada)
+O terminal pede telefone (com DDI e DDD), código de verificação e senha 2FA se configurada. A sessão fica salva em `data/`.
 
-Após login bem-sucedido, bot inicia escuta e mensagem de sucesso aparece.
-
-### Passo 4: Executar como Serviço Windows (24/7)
-
-Para rodar em background sem manter terminal aberto:
-
-1. Baixe **NSSM** (já incluso na pasta `NSSM/`)
-2. Execute `reiniciar_bot.bat` como Administrador
-3. Bot inicia como serviço Windows (inicia automaticamente com sistema)
-
-Para gerenciar serviço:
-- Iniciar: `nssm start botOfertas`
-- Parar: `nssm stop botOfertas`
-- Reiniciar: `reiniciar_bot.bat`
+> A ponte do WhatsApp não é necessária para o funcionamento base — sem ela, o bot opera apenas no Telegram.
 
 ---
 
-## 🐳 Como Rodar na VPS via Docker
+## Deploy (Docker)
 
-### 1. Transferir os arquivos para a VPS
-Clone o repositório ou envie os arquivos para a VPS (certifique-se de ter Docker e Docker Compose instalados):
+### Fonte canônica de deploy
+
+O serviço de produção é gerenciado pelo **compose mestre** (`/root/dodo/docker-compose.yml`), que define o `bot-ofertas` com healthcheck e limites de recursos. O `docker-compose.yml` deste diretório é secundário (útil para subir isolado).
+
 ```bash
-# Na VPS:
-git clone <URL_DO_REPOSITORIO> botOfertas
+# deploy real (compose mestre)
+cd /root/dodo && docker compose up -d --no-build bot-ofertas
+
+# subir isolado a partir deste repositorio
+cd botOfertas && docker compose up -d --build
+```
+
+### `network_mode: host` é obrigatório para a rota WhatsApp
+
+A ponte do WhatsApp escuta em `127.0.0.1:3001` (somente localhost). Um container em rede bridge não a alcança. Por isso o serviço declara `network_mode: host` — o bot apenas faz conexões de saída, não expõe portas, então o ganho de superfície é nulo e a integração passa a funcionar.
+
+Sem esse modo, o bot continua funcionando normalmente no Telegram; apenas a rota WhatsApp falha (e falha como "extra": loga e segue).
+
+### Autenticação da sessão em servidor
+
+- **Migração**: copie a pasta `data/` local (contendo o `.session`) para `data/` da VPS
+- **Novo login**: `docker compose run --rm bot-ofertas` e autentique interativamente; a sessão persiste no volume
+
+### Comandos úteis
+
+```bash
+docker compose logs -f        # logs em tempo real
+docker compose restart        # reiniciar
+docker compose down           # parar
+git pull && docker compose up -d --build   # atualizar
+```
+
+---
+
+## Testes
+
+```bash
 cd botOfertas
+.venv/bin/python -m pytest tests/ -q        # suite completa (90 testes)
+.venv/bin/python -m pytest tests/ -v        # verboso
 ```
 
-### 2. Configurar o `.env`
-Crie o arquivo `.env` na VPS com suas credenciais:
-```bash
-cp .env.example .env
-nano .env  # ou vim .env
-```
+Cobertura: `offer_service`, `deduplication`, `command_handler`, `watchdog`, `whatsapp_flag`, `whatsapp_sender`, `callback_handler`, `message_whatsapp`.
 
-### 3. Autenticação inicial (Sessão Telegram)
-- **Opção A (Recomendada - Migração)**: Copie sua pasta `data/` local (que já contém o arquivo `.session` e `data.json`) para a pasta `data/` da VPS.
-- **Opção B (Novo login interativo via Docker)**: Execute o container uma vez interativamente para autenticar via terminal:
-```bash
-docker compose run --rm bot-ofertas
-# Digite seu telefone, código SMS recebido e senha 2FA se solicitada
-```
-Após o login, a sessão será salva automaticamente no volume persistente `./data`.
-
-### 4. Iniciar o Bot em Background (24/7)
-```bash
-docker compose up -d --build
-```
-
-### 5. Comandos Úteis do Docker
-- **Ver logs em tempo real**: `docker compose logs -f`
-- **Reiniciar o bot**: `docker compose restart`
-- **Parar o bot**: `docker compose down`
-- **Atualizar código**: `git pull && docker compose up -d --build`
-
-> 💡 **Nota sobre Auto-Healing**: O watchdog embutido encerrará o processo caso a conexão do Telegram trave. Como o container está configurado com `restart: unless-stopped`, o Docker cuidará automaticamente de reiniciar o bot.
+Para cobertura de código, instale `pytest-cov` e use `--cov=app`.
 
 ---
 
-## 🧪 Testes
+## Sistema de Comandos
 
-```bash
-# Rodar suite completa
-pytest tests/ -v
+Todos os comandos rodam no **Grupo de Controle** (configurado via `FORWARD_TO`). Somente o dono da conta pode acioná-los.
 
-# Com cobertura de código
-pytest tests/ --cov=app.services.offer_service --cov-report=term-missing
-```
-
-**Resultado atual**: 39 testes unitários passando (22 OfferService + 17 Deduplicação), cobertura ampliada em `OfferService` e módulo dedicado `OfferDeduplicator`.
-
----
-
-## 🛠️ Stack Tecnológica
-
-| Tecnologia        | Versão   | Responsabilidade                        |
-| ----------------- | -------- | --------------------------------------- |
-| Python            | 3.10+    | Linguagem principal                     |
-| Telethon          | 1.33.1   | API MTProto do Telegram (userbot)       |
-| python-dotenv     | latest   | Carregamento de variáveis de ambiente   |
-| thefuzz           | 0.22.1   | Similaridade fuzzy para deduplicação    |
-| pytest            | latest   | Framework de testes unitários           |
-| pytest-cov        | latest   | Cobertura de código                     |
-| Ruff              | latest   | Linting e formatação de código          |
-| NSSM              | 2.24     | Gerenciador de serviço Windows          |
+| Comando            | Função                                                     | Exemplo                |
+| ------------------ | ---------------------------------------------------------- | ---------------------- |
+| `/comandos`        | Painel de ajuda                                            | `/comandos`            |
+| `/buscar`          | Busca retroativa (7 dias, máx. 30 resultados)              | `/buscar notebook`     |
+| `/grupos`          | Lista grupos monitorados                                   | `/grupos`              |
+| `/grupos add`      | Adiciona grupo(s), aceita vírgula para massa               | `/grupos add grupoa, grupob` |
+| `/grupos rm`       | Remove grupo(s)                                            | `/grupos rm grupoa`    |
+| `/alertas`         | Lista palavras-chave ativas                                | `/alertas`             |
+| `/alertas add`     | Adiciona keyword; oferece botão de confirmação WhatsApp    | `/alertas add teclado` |
+| `/alertas rm`      | Remove keyword (limpa a flag WhatsApp junto)               | `/alertas rm teclado`  |
+| `/alertas wa`      | Liga/desliga o envio WhatsApp de uma keyword               | `/alertas wa teclado`  |
+| `/getid`           | Revela o ID numérico do chat atual                         | `/getid`               |
 
 ---
 
-## 📦 Versionamento
+## Integração WhatsApp (Ofertas Prioritárias)
 
-Commits seguem padrão **Conventional Commits** com prefixos semânticos:
-- `feat:` nova funcionalidade
-- `fix:` correção de bug
-- `refactor:` refatoração sem mudança comportamental
-- `docs:` documentação
-- `test:` testes automatizados
-- `chore:` manutenção
+Uma keyword pode ser marcada como prioritária, recebendo entrega dupla: Telegram (como sempre) e um grupo do WhatsApp com **menção nativa** no dono.
 
-Histórico completo em `resumo-de-trabalho.md` com IDs únicos rastreáveis.
+### Marcar uma keyword
 
----
+`/alertas add teclado` responde com dois botões:
 
-## 💡 Decisões Técnicas
+- **"Sim, WhatsApp"** — marca a keyword para entrega dupla
+- **"Não, só Telegram"** — mantém o comportamento padrão
 
-- **SPA monolítico → Modular**: `main.py` de 232 linhas refatorado em handlers dedicados e OfferService
-- **Persistência JSON**: Leve, rápida e sem dependência de banco de dados externo
-- **Telethon sobre python-telegram-bot**: Acesso via API MTProto contorna limites de bots normais (lê mensagens de qualquer grupo)
-- **Local-first**: Dados persistem em JSON local, sem necessidade de cloud ou serviços externos
-- **NSSM para serviço Windows**: Solução robusta e gratuita para execução 24/7 sem manter terminal aberto
-- **UTF-8 forçado**: Wrapper em sys.stdout/stderr garante encoding correto no terminal Windows (CP1252 → UTF-8)
-- **Limite de 30 resultados em `/buscar`**: Travas de segurança contra FloodWait (spam detection do Telegram)
-- **Deduplicação fuzzy**: thefuzz com threshold 80% detecta ofertas semanticamente similares entre grupos
-- **Persistência temporal**: Ofertas enviadas expiram automaticamente após 48h para evitar crescimento ilimitado
-- **Auditoria dedicada**: Log unificado em `logs/Logs.txt` para rastreamento de ofertas duplicadas e logs do bot
+Ignorar os botões também mantém o padrão. Depois de cadastrada, `/alertas wa teclado` alterna a marca a qualquer momento.
 
----
+### Como a entrega funciona
 
-## ⚠️ Solução de Problemas
+O `message_handler`, ao encaminhar uma oferta de keyword marcada, chama o `whatsapp_sender`, que monta o texto (mensagem original + origem + data) e faz `POST /send` na ponte do WhatsApp, com o campo `mentions`.
 
-**"Meus comandos não respondem no grupo"**
-- Provável causa: ID errado em `FORWARD_TO` no `.env`
-- Grupos privados começam com `-100` (ex: `-1003637074849`)
-- Use `/getid` no grupo desejado para descobrir ID correto
-- Atualize `.env` e reinicie bot
+**Detalhe crítico de implementação:** o campo `mentions` sozinho não gera a menção. O WhatsApp/Baileys só renderiza (e notifica) quando o handle `@numero` aparece **no corpo do texto**. O `whatsapp_sender` injeta esse handle na primeira linha. Um `success: true` da ponte não prova que a menção formou — a verificação é visual.
 
-**"Bot não encaminha mensagens filtradas"**
-- Verifique se bot foi adicionado ao grupo origem
-- Confirme alertas configurados via `/alertas`
-- Cheque logs de erro (NSSM grava em `C:\error.log` por padrão)
+### Comportamento em falha
 
-**"Minha conta foi banida de grupo"**
-- Bot é vinculado à conta pessoal. Se grupo banir você, bot perde acesso
-- Solicite desban ou use conta secundária
+Se a ponte estiver fora do ar, a oferta **não se perde**: já foi encaminhada para o Telegram antes. A falha é logada em `logs/Logs.txt` e o bot segue. Não há retry.
+
+### Decisões de design
+
+O registro completo (contexto, alternativas descartadas, consequências) está em `docs/design-integracao-whatsapp.md`.
 
 ---
 
-## 📄 Licença
+## Persistência
+
+- **Estado** (`data/data.json`): grupos monitorados, alertas e flags WhatsApp
+- **Registro de ofertas** (`data/offers_sent.json`): hash das ofertas enviadas, expira em 48h
+- **Sessão** (`data/*.session`): credencial Telethon persistida após o primeiro login
+- **Encoding**: UTF-8 explícito em todas as operações de I/O
+- Todo o diretório `data/` é gitignored
+
+---
+
+## Segurança e Privacidade
+
+- **Credenciais** em `.env`, fora do versionamento (`.env.example` é o único commitado)
+- **Sessão** `.session` também gitignored — quem tiver acesso a ele tem acesso à conta
+- **Vinculação à conta pessoal**: é um userbot. Se um grupo banir sua conta, o bot perde acesso às ofertas daquele grupo
+- **2FA suportada**: pedida no primeiro login se configurada na conta
+- **Ponte do WhatsApp** roda no host e escuta apenas em `localhost` — não é exposta
+
+---
+
+## Solução de Problemas
+
+**Comandos não respondem no grupo**
+- `FORWARD_TO` incorreto no `.env`. Grupos privados começam com `-100`
+- Use `/getid` no grupo desejado para descobrir o ID e ajuste o `.env`
+
+**Bot não encaminha ofertas**
+- Confirme se a conta foi adicionada ao grupo de origem
+- Verifique as keywords via `/alertas`
+- Confira `logs/Logs.txt` (ofertas puladas por dedup também aparecem lá)
+
+**Oferta chega no Telegram mas não no WhatsApp**
+- A keyword pode não estar marcada — verifique com `/alertas wa <kw>`
+- A ponte do WhatsApp pode estar fora: `curl http://127.0.0.1:3001/health` deve retornar `connected`
+- Se o container estiver em rede bridge, a ponte é inalcançável — `network_mode: host` é obrigatório
+
+**Mensagem chega no WhatsApp sem notificação**
+- A menção não formou. O handle `@numero` precisa estar no texto (o `whatsapp_sender` faz isso automaticamente); se você customizou o texto, mantenha o handle
+
+**Conta banida de um grupo**
+- O bot usa sua conta pessoal. Se o grupo banir você, o bot perde acesso. Solicite desban ou use conta secundária
+
+---
+
+## Decisões Técnicas
+
+- **Telethon sobre python-telegram-bot**: A API MTProto permite ler mensagens de qualquer grupo — a Bot API não oferece isso
+- **Persistência JSON**: Sem dependência de banco externo; o volume de dados é pequeno e o acesso é simples
+- **Entrega WhatsApp direta na ponte**: Evita custo de LLM por alerta e latência de um agente; a menção nativa exige o campo `mentions` + handle no texto, que o webhook `deliver_only` do Hermes não envia
+- **`network_mode: host`**: Requerido para alcançar a ponte em localhost; o bot só faz saída, então não abre superfície
+- **Falha do WhatsApp é não-bloqueante**: A rota WhatsApp é um extra — o Telegram é o destino garantido
+- **Watchdog + `restart: unless-stopped`**: Em vez de supervisionar a conexão, mata o processo travado e deixa o Docker religar
+- **Limite de 30 em `/buscar`**: Proteção contra FloodWait (anti-spam do Telegram)
+- **Marcação por keyword, não por oferta**: Configura uma vez e vale para todas as ofertas daquela keyword — mais prático que marcar oferta a oferta
+
+---
+
+## Licença
 
 MIT License
 
 ---
 
-## 👤 Autoria
+## Autoria
 
-Desenvolvido por **Douglas Silva** como projeto pessoal de automação Telegram.
+Desenvolvido por **Douglas Silva** como projeto pessoal de automação.
 
-Base original adaptada, expandida e personalizada mantendo licença MIT conforme projeto fonte.
+Base original adaptada, expandida e personalizada, mantendo licença MIT conforme o projeto fonte.

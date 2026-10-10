@@ -3,7 +3,7 @@ Handler de comandos — /comandos, /buscar, /grupos, /alertas.
 """
 
 import asyncio
-from telethon import events
+from telethon import Button, events
 
 
 class CommandHandler:
@@ -49,6 +49,25 @@ class CommandHandler:
         self._register_grupos(forward_to)
         self._register_alertas(forward_to)
 
+    @staticmethod
+    def whatsapp_confirm_buttons(items, results):
+        """Monta os botões de confirmação WhatsApp para alertas recém-adicionados.
+
+        Mostra os botões apenas quando exatamente UM alerta foi adicionado
+        (o callback wa_sim:<keyword> precisa de uma keyword única).
+        Em massa, usar `/alertas wa <kw>` depois.
+        """
+        added = [item for item, ok, _ in results if ok]
+        if len(added) != 1:
+            return None
+        keyword = added[0]
+        return [
+            [
+                Button.inline("📲 Sim, WhatsApp", data=f"wa_sim:{keyword}"),
+                Button.inline("Não, só Telegram", data=f"wa_nao:{keyword}"),
+            ]
+        ]
+
     def _register_getid(self):
         @self.client.on(events.NewMessage(pattern=r"/getid", from_users="me"))
         async def handle_getid(event):
@@ -75,6 +94,7 @@ class CommandHandler:
                 "Gerencia as palavras-chave monitoradas.\n"
                 "➕ `/alertas add teclado`\n"
                 "➖ `/alertas rm teclado`\n"
+                "📲 `/alertas wa teclado` — liga/desliga o envio pro WhatsApp\n"
                 "💡 Em massa: `/alertas add iphone, caixa de som`\n\n"
                 "ℹ️ `/getid`\n"
                 "Mostra o ID do chat atual para configurações."
@@ -203,7 +223,21 @@ class CommandHandler:
                     )
                 else:
                     results, _ = self.offer_service.add_alerts(items)
-                    await event.respond(self.format_bulk_response(results))
+                    await event.respond(
+                        self.format_bulk_response(results),
+                        buttons=self.whatsapp_confirm_buttons(items, results),
+                    )
+            elif cmd == "wa":
+                if not items:
+                    await event.respond(
+                        "⚠️ **Uso correto:** `/alertas wa iphone`\n"
+                        "Liga/desliga o envio pro WhatsApp daquele alerta."
+                    )
+                else:
+                    for kw in items:
+                        current = self.offer_service.has_whatsapp_flag(kw)
+                        _, msg = self.offer_service.set_whatsapp_flag(kw, not current)
+                        await event.respond(msg)
             elif cmd in ["rm", "del", "remove"]:
                 if not items:
                     await event.respond(
