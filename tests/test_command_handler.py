@@ -51,33 +51,30 @@ class TestFormatBulkResponse:
         assert "⚠️" in response and "`b`: já está na lista" in response
 
 
-class TestWhatsappConfirmButtons:
-    """Testes para os botões de confirmação WhatsApp."""
+class TestWhatsappHint:
+    """Testes para a dica de envio pro WhatsApp no /alertas add."""
 
-    def test_single_added_shows_buttons(self):
-        """Um alerta adicionado = botões de confirmação."""
+    def test_single_added_hints_command(self):
+        """Um alerta adicionado = dica com o comando da própria keyword."""
         results = [("teclado", True, "adicionado com sucesso")]
-        buttons = CommandHandler.whatsapp_confirm_buttons(["teclado"], results)
-        assert buttons is not None
-        row = buttons[0]
-        assert row[0].data == b"wa_sim:teclado"
-        assert row[1].data == b"wa_nao:teclado"
+        hint = CommandHandler.whatsapp_hint(results)
+        assert "`/alertas wa teclado`" in hint
 
-    def test_multiword_keyword_in_data(self):
-        """Keyword com espaço deve ir inteira no data do botão."""
+    def test_multiword_keyword_in_hint(self):
+        """Keyword com espaço vai inteira na dica."""
         results = [("teclado mecanico", True, "adicionado com sucesso")]
-        buttons = CommandHandler.whatsapp_confirm_buttons(["teclado mecanico"], results)
-        assert buttons[0][0].data == b"wa_sim:teclado mecanico"
+        hint = CommandHandler.whatsapp_hint(results)
+        assert "`/alertas wa teclado mecanico`" in hint
 
-    def test_bulk_add_no_buttons(self):
-        """Mais de um alerta = sem botões (usar /alertas wa depois)."""
+    def test_bulk_add_uses_placeholder(self):
+        """Mais de um alerta = placeholder, já que o comando é por keyword."""
         results = [
             ("a", True, "adicionado com sucesso"),
             ("b", True, "adicionado com sucesso"),
         ]
-        assert CommandHandler.whatsapp_confirm_buttons(["a", "b"], results) is None
+        assert "`/alertas wa <palavra>`" in CommandHandler.whatsapp_hint(results)
 
-    def test_all_duplicates_no_buttons(self):
-        """Nada adicionado = sem botões."""
+    def test_no_added_no_hint(self):
+        """Nada adicionado (tudo duplicado) = sem dica."""
         results = [("a", False, "já está na lista")]
-        assert CommandHandler.whatsapp_confirm_buttons(["a"], results) is None
+        assert CommandHandler.whatsapp_hint(results) == ""

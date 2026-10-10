@@ -3,7 +3,8 @@ Handler de comandos — /comandos, /buscar, /grupos, /alertas.
 """
 
 import asyncio
-from telethon import Button, events
+
+from telethon import events
 
 
 class CommandHandler:
@@ -50,23 +51,21 @@ class CommandHandler:
         self._register_alertas(forward_to)
 
     @staticmethod
-    def whatsapp_confirm_buttons(items, results):
-        """Monta os botões de confirmação WhatsApp para alertas recém-adicionados.
+    def whatsapp_hint(results):
+        """Dica de envio pro WhatsApp após adicionar alertas.
 
-        Mostra os botões apenas quando exatamente UM alerta foi adicionado
-        (o callback wa_sim:<keyword> precisa de uma keyword única).
-        Em massa, usar `/alertas wa <kw>` depois.
+        Os botões inline não funcionam em userbot: o Telegram descarta o
+        reply_markup quando o remetente é conta pessoal (não Bot API).
+        Ver rotinas/troubleshooting/whatsapp-botao-inline-nao-funciona.md
         """
         added = [item for item, ok, _ in results if ok]
-        if len(added) != 1:
-            return None
-        keyword = added[0]
-        return [
-            [
-                Button.inline("📲 Sim, WhatsApp", data=f"wa_sim:{keyword}"),
-                Button.inline("Não, só Telegram", data=f"wa_nao:{keyword}"),
-            ]
-        ]
+        if not added:
+            return ""
+        kw = added[0] if len(added) == 1 else "<palavra>"
+        return (
+            "\n\n📲 **Pra enviar também no WhatsApp:** `/alertas wa " + kw + "`"
+            " (liga/desliga a qualquer momento)"
+        )
 
     def _register_getid(self):
         @self.client.on(events.NewMessage(pattern=r"/getid", from_users="me"))
@@ -224,8 +223,7 @@ class CommandHandler:
                 else:
                     results, _ = self.offer_service.add_alerts(items)
                     await event.respond(
-                        self.format_bulk_response(results),
-                        buttons=self.whatsapp_confirm_buttons(items, results),
+                        self.format_bulk_response(results) + self.whatsapp_hint(results)
                     )
             elif cmd == "wa":
                 if not items:

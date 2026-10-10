@@ -43,7 +43,7 @@ A persistência é JSON local (sem banco de dados externo), e a execução cont�
 - **Auditoria** — ofertas puladas registradas em `logs/Logs.txt` com timestamp e motivo
 - **Watchdog** — mata o processo se ficar sem atividade; o Docker o reinicia
 - **Arquitetura modular** — handlers separados, serviços dedicados, sem monólito
-- **95 testes unitários** — pytest, cobrindo serviços, handlers, deduplicação, watchdog e envio WhatsApp
+- **91 testes unitários** — pytest, cobrindo serviços, handlers, deduplicação, watchdog e envio WhatsApp
 
 ---
 
@@ -56,8 +56,6 @@ Grupos monitorados (Telegram)
 Userbot Telethon (MTProto)
         |
         +-- CommandHandler   /comandos /buscar /grupos /alertas /getid
-        |                       |
-        |                       +-- botoes inline (confirmacao WhatsApp)
         |
         +-- MessageHandler   filtra por keyword + dedup
         |        |
@@ -66,7 +64,7 @@ Userbot Telethon (MTProto)
         |        +---> WhatsApp: se keyword marcada, envia para o grupo
         |                     do Sol com mencao nativa (via ponte :3001)
         |
-        +-- CallbackHandler  processa cliques nos botoes inline
+        +-- CallbackHandler  (vazio, reservado)
         |
         +-- OfferService     grupos, alertas, flags whatsapp, busca
         +-- OfferDeduplicator  hash exato + fuzzy, expira em 48h
@@ -88,9 +86,9 @@ botOfertas/
 |   |-- config.py                # Variaveis de ambiente (.env)
 |   |-- storage.py               # Persistencia JSON
 |   |-- handlers/
-|   |   |-- command_handler.py    # Comandos + botoes inline de confirmacao
+|   |   |-- command_handler.py    # Comandos + dica de envio WhatsApp
 |   |   |-- message_handler.py    # Filtro de keyword + rota WhatsApp
-|   |   +-- callback_handler.py   # Cliques nos botoes (wa_sim / wa_nao)
+|   |   +-- callback_handler.py   # Vazio, reservado
 |   +-- services/
 |       |-- offer_service.py      # Grupos, alertas, flags, busca
 |       |-- deduplication.py      # Hash exato + fuzzy, expiracao 48h
@@ -118,13 +116,13 @@ Lê `API_ID`, `API_HASH`, `SESSION_NAME`, `FORWARD_TO` e os timeouts do watchdog
 Camada de persistência. `load_data` cria o `data.json` com estado padrão na primeira execução; `save_data` grava com indentação e UTF-8.
 
 ### `app/handlers/command_handler.py`
-Registra e processa os comandos do grupo de controle. `add` de alerta anexa os botões inline de confirmação WhatsApp; `/alertas wa` liga/desliga a marca de uma keyword.
+Registra e processa os comandos do grupo de controle. O `add` de alerta anexa uma dica de como ligar o envio WhatsApp; `/alertas wa` liga/desliga a marca de uma keyword.
 
 ### `app/handlers/message_handler.py`
 Filtra mensagens dos grupos monitorados, aplica deduplicação, casa a keyword e encaminha para o Telegram. Se a keyword estiver marcada como prioritária, também dispara o envio para o WhatsApp (falha na ponte não interrompe o fluxo do Telegram).
 
 ### `app/handlers/callback_handler.py`
-Processa os cliques nos botões inline (`wa_sim:<kw>` / `wa_nao:<kw>`), alternando a flag WhatsApp da keyword e editando a mensagem para remover os botões.
+Vazio, reservado. Foi ocupado por botões inline de confirmação WhatsApp, mas o Telegram descarta o `reply_markup` quando o remetente é conta pessoal (userbot MTProto) — só contas Bot API podem enviar inline keyboards. A alternativa adotada é `/alertas wa <palavra>`.
 
 ### `app/services/offer_service.py`
 Núcleo da lógica de negócio: CRUD de grupos e alertas, flags de prioridade WhatsApp, busca retroativa de 7 dias e formatação das mensagens. Delega deduplicação ao `OfferDeduplicator`.
@@ -136,7 +134,7 @@ Gera hash a partir de título + descrição + URL normalizados. Detecta duplicat
 Único módulo que conhece a API da ponte do WhatsApp. Monta o texto da oferta (com o handle de menção no corpo — obrigatório para a menção renderizar) e faz o POST `/send` com o campo `mentions`.
 
 ### `tests/`
-95 testes unitários: `offer_service` (33), `deduplication` (17), `command_handler` (10), `watchdog` (8), `whatsapp_flag` (8), `whatsapp_sender` (7), `storage_backup` (5), `callback_handler` (4), `message_whatsapp` (3).
+91 testes unitários: `offer_service` (33), `deduplication` (17), `command_handler` (10), `watchdog` (8), `whatsapp_flag` (8), `whatsapp_sender` (7), `storage_backup` (5), `message_whatsapp` (3).
 
 ---
 
@@ -271,11 +269,11 @@ git pull && docker compose up -d --build   # atualizar
 
 ```bash
 cd botOfertas
-.venv/bin/python -m pytest tests/ -q        # suite completa (95 testes)
+.venv/bin/python -m pytest tests/ -q        # suite completa (91 testes)
 .venv/bin/python -m pytest tests/ -v        # verboso
 ```
 
-Cobertura: `offer_service`, `deduplication`, `command_handler`, `watchdog`, `whatsapp_flag`, `whatsapp_sender`, `callback_handler`, `message_whatsapp`.
+Cobertura: `offer_service`, `deduplication`, `command_handler`, `watchdog`, `whatsapp_flag`, `whatsapp_sender`, `storage_backup`, `message_whatsapp`.
 
 Para cobertura de código, instale `pytest-cov` e use `--cov=app`.
 
@@ -293,7 +291,7 @@ Todos os comandos rodam no **Grupo de Controle** (configurado via `FORWARD_TO`).
 | `/grupos add`      | Adiciona grupo(s), aceita vírgula para massa               | `/grupos add grupoa, grupob` |
 | `/grupos rm`       | Remove grupo(s)                                            | `/grupos rm grupoa`    |
 | `/alertas`         | Lista palavras-chave ativas                                | `/alertas`             |
-| `/alertas add`     | Adiciona keyword; oferece botão de confirmação WhatsApp    | `/alertas add teclado` |
+| `/alertas add`     | Adiciona keyword; sugere o comando de envio WhatsApp       | `/alertas add teclado` |
 | `/alertas rm`      | Remove keyword (limpa a flag WhatsApp junto)               | `/alertas rm teclado`  |
 | `/alertas wa`      | Liga/desliga o envio WhatsApp de uma keyword               | `/alertas wa teclado`  |
 | `/getid`           | Revela o ID numérico do chat atual                         | `/getid`               |
@@ -306,12 +304,17 @@ Uma keyword pode ser marcada como prioritária, recebendo entrega dupla: Telegra
 
 ### Marcar uma keyword
 
-`/alertas add teclado` responde com dois botões:
+Depois de `/alertas add teclado`, o bot responde com a dica:
 
-- **"Sim, WhatsApp"** — marca a keyword para entrega dupla
-- **"Não, só Telegram"** — mantém o comportamento padrão
+```
+✅ **Sucesso:** `teclado`
 
-Ignorar os botões também mantém o padrão. Depois de cadastrada, `/alertas wa teclado` alterna a marca a qualquer momento.
+📲 **Pra enviar também no WhatsApp:** `/alertas wa teclado` (liga/desliga a qualquer momento)
+```
+
+`/alertas wa teclado` alterna a marca a qualquer momento. Sem marca, o comportamento é o padrão: só Telegram.
+
+> **Por que não há botão?** Botões inline exigem conta Bot API. O bot é userbot (conta pessoal via MTProto), e o Telegram remove o `reply_markup` de contas de usuário — validado ao vivo, não é configuração que mude.
 
 ### Como a entrega funciona
 
