@@ -53,12 +53,13 @@ class MessageHandler:
         if not should_send:
             return
 
-        matched_keyword = self.offer_service.check_keyword_match(message_text)
+        matched_keywords = self.offer_service.check_keyword_matches(message_text)
 
-        if matched_keyword:
+        if matched_keywords:
             chat_title = getattr(chat, "title", "Desconhecido")
             logger.info(
-                f"Keyword '{matched_keyword}' found in chat '{chat_title}'! Forwarding..."
+                f"Keyword(s) {matched_keywords} found in chat '{chat_title}'!"
+                " Forwarding..."
             )
 
             fw_msg = await event.message.forward_to(
@@ -75,15 +76,24 @@ class MessageHandler:
             if title:
                 self.offer_service.register_sent_offer(title, description, url, [chat_title])
 
+            alert_label = ", ".join(f"`{kw}`" for kw in matched_keywords)
             await self.client.send_message(
                 self.offer_service.state["forward_to"],
-                f"🔔 **Alerta:** `{matched_keyword}`\n📅 **Data:** {msg_date}\n📦 **Origem:** {chat_title}",
+                f"🔔 **Alerta:** {alert_label}\n📅 **Data:** {msg_date}\n📦 **Origem:** {chat_title}",
                 reply_to=fw_msg,
                 silent=True,
             )
 
-            # Destino extra: keyword marcada como prioritária também vai pro WhatsApp
-            if self.offer_service.has_whatsapp_flag(matched_keyword):
+            # Destino extra: se QUALQUER keyword da mensagem estiver marcada,
+            # a oferta vai pro WhatsApp (não só a primeira da lista — uma
+            # oferta de café Orfeu bate `café` e `orfeu`).
+            flagged = [
+                kw
+                for kw in matched_keywords
+                if self.offer_service.has_whatsapp_flag(kw)
+            ]
+            if flagged:
+                logger.info(f"Enviando oferta pro WhatsApp pelos alertas {flagged}")
                 try:
                     send_offer_to_whatsapp(message_text, chat_title, event.message.date)
                 except Exception as e:

@@ -43,7 +43,7 @@ A persistência é JSON local (sem banco de dados externo), e a execução cont�
 - **Auditoria** — ofertas puladas registradas em `logs/Logs.txt` com timestamp e motivo
 - **Watchdog** — mata o processo se ficar sem atividade; o Docker o reinicia
 - **Arquitetura modular** — handlers separados, serviços dedicados, sem monólito
-- **91 testes unitários** — pytest, cobrindo serviços, handlers, deduplicação, watchdog e envio WhatsApp
+- **98 testes unitários** — pytest, cobrindo serviços, handlers, deduplicação, watchdog e envio WhatsApp
 
 ---
 
@@ -119,7 +119,7 @@ Camada de persistência. `load_data` cria o `data.json` com estado padrão na pr
 Registra e processa os comandos do grupo de controle. O `add` de alerta anexa uma dica de como ligar o envio WhatsApp; `/alertas wa` liga/desliga a marca de uma keyword.
 
 ### `app/handlers/message_handler.py`
-Filtra mensagens dos grupos monitorados, aplica deduplicação, casa a keyword e encaminha para o Telegram. Se a keyword estiver marcada como prioritária, também dispara o envio para o WhatsApp (falha na ponte não interrompe o fluxo do Telegram).
+Filtra mensagens dos grupos monitorados, aplica deduplicação, casa **todas** as keywords de alerta presentes na mensagem e encaminha para o Telegram (o aviso lista cada keyword que bateu). Se **qualquer uma** delas estiver marcada como prioritária, também dispara o envio para o WhatsApp (falha na ponte não interrompe o fluxo do Telegram).
 
 ### `app/handlers/callback_handler.py`
 Vazio, reservado. Foi ocupado por botões inline de confirmação WhatsApp, mas o Telegram descarta o `reply_markup` quando o remetente é conta pessoal (userbot MTProto) — só contas Bot API podem enviar inline keyboards. A alternativa adotada é `/alertas wa <palavra>`.
@@ -134,7 +134,7 @@ Gera hash a partir de título + descrição + URL normalizados. Detecta duplicat
 Único módulo que conhece a API da ponte do WhatsApp. Monta o texto da oferta (com o handle de menção no corpo — obrigatório para a menção renderizar) e faz o POST `/send` com o campo `mentions`.
 
 ### `tests/`
-91 testes unitários: `offer_service` (33), `deduplication` (17), `command_handler` (10), `watchdog` (8), `whatsapp_flag` (8), `whatsapp_sender` (7), `storage_backup` (5), `message_whatsapp` (3).
+98 testes unitários: `offer_service` (37), `deduplication` (17), `command_handler` (10), `whatsapp_flag` (8), `watchdog` (8), `whatsapp_sender` (7), `message_whatsapp` (6), `storage_backup` (5).
 
 ---
 

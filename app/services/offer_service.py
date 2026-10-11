@@ -237,17 +237,36 @@ class OfferService:
             return "Nenhum alerta ativo no momento."
         return "\n".join([f"- `{a}`" for a in self.state["alertas"]])
 
-    def check_keyword_match(self, message_text):
-        """Verifica se a mensagem contém alguma palavra-chave monitorada."""
+    def check_keyword_matches(self, message_text):
+        """Retorna TODAS as keywords monitoradas presentes na mensagem.
+
+        Ordem: a da lista de alertas (quem vem primeiro na lista vem primeiro),
+        para manter estável o "alerta principal".
+
+        Por que não basta a primeira keyword: o envio pro WhatsApp é decidido
+        por keyword marcada, e uma oferta pode citar várias (ex.: "ORFEU Café
+        em Grãos" bate `café` E `orfeu`). Decidir só pela primeira da lista
+        escondia a keyword marcada e a oferta nunca ia pro Zap.
+        """
         if not message_text:
-            return None
+            return []
 
         message_lower = message_text.lower()
+        matches = []
         for keyword in self.state["alertas"]:
             pattern = rf"\b{re.escape(keyword.lower())}s?\b"
             if re.search(pattern, message_lower):
-                return keyword
-        return None
+                matches.append(keyword)
+        return matches
+
+    def check_keyword_match(self, message_text):
+        """Verifica se a mensagem contém alguma palavra-chave monitorada.
+
+        Retorna só a primeira (compatibilidade); use check_keyword_matches
+        quando todas importarem, como no disparo pro WhatsApp.
+        """
+        matches = self.check_keyword_matches(message_text)
+        return matches[0] if matches else None
 
     def extract_offer_info(self, message_text):
         """Extrai título, descrição e URL de uma mensagem."""

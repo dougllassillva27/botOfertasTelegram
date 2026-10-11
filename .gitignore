@@ -66,7 +66,9 @@ reinicar_bot.bat
 ############################################
 # 📂 DADOS LOCAIS
 ############################################
-data/
+# /data (sem barra no fim) também cobre o symlink criado em 11/10/2026:
+# o estado real vive em /home/ubuntu/dodo-state/botOfertas/data
+/data
 _contexto-ia/
 scripts/
 resumo-de-trabalho.md

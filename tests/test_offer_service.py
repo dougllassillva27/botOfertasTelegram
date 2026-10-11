@@ -6,6 +6,8 @@ Cobre: add/remove group, add/remove alert, keyword matching, formatação.
 from datetime import datetime, timezone, timedelta
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 
 class TestOfferServiceGroupManagement:
     """Testes para gerenciamento de grupos."""
@@ -250,6 +252,40 @@ class TestOfferServiceKeywordMatching:
         # "notebook" contém "note" como prefixo, mas \b deve impedir
         # Na prática, regex \bnote\b não casa em "notebook"
         assert result is None or result == "notebook"
+
+
+class TestOfferServiceAllKeywordMatches:
+    """Todas as keywords da mensagem, não só a primeira."""
+
+    @pytest.fixture
+    def cafe_e_orfeu(self, offer_service):
+        """Cenário real de 11/10/2026: lista com `café` antes de `orfeu`."""
+        offer_service.state["alertas"] = ["café", "orfeu", "sabão"]
+        return offer_service
+
+    def test_returns_all_matches_in_list_order(self, cafe_e_orfeu):
+        """Mensagem com as duas keywords deve devolver as duas, na ordem da lista."""
+        result = cafe_e_orfeu.check_keyword_matches(
+            "TU PREFERE MOER TEUS GRÃOS?\nORFEU Café em Grãos Intenso 1 kg"
+        )
+        assert result == ["café", "orfeu"]
+
+    def test_single_match_still_works(self, cafe_e_orfeu):
+        """Mensagem com uma keyword só devolve lista de um."""
+        assert cafe_e_orfeu.check_keyword_matches("Sabão em pó barato") == ["sabão"]
+
+    def test_no_match_returns_empty_list(self, cafe_e_orfeu):
+        """Sem keyword: lista vazia (e não None)."""
+        assert cafe_e_orfeu.check_keyword_matches("compro geladeira") == []
+        assert cafe_e_orfeu.check_keyword_matches("") == []
+        assert cafe_e_orfeu.check_keyword_matches(None) == []
+
+    def test_first_match_is_backward_compatible(self, cafe_e_orfeu):
+        """check_keyword_match continua devolvendo a primeira da lista."""
+        assert (
+            cafe_e_orfeu.check_keyword_match("ORFEU Café em Grãos 1kg")
+            == "café"
+        )
 
 
 class TestOfferServiceFormatMessage:
