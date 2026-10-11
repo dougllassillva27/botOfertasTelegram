@@ -136,7 +136,7 @@ class OfferService:
         """Retorna lista formatada dos grupos monitorados."""
         if not self.state["grupos"]:
             return "Nenhum grupo monitorado no momento."
-        return "\n".join([f"- `{g}`" for g in self.state["grupos"]])
+        return "\n".join([f"• `{g}`" for g in self.state["grupos"]])
 
     def add_alert(self, keyword):
         """Adiciona uma palavra-chave de alerta."""
@@ -157,22 +157,43 @@ class OfferService:
         return kw in self._get_whatsapp_flags()
 
     def set_whatsapp_flag(self, keyword, enabled=True):
-        """Liga ou desliga a marca WhatsApp de um alerta existente."""
+        """Liga ou desliga a marca WhatsApp de um alerta existente.
+
+        As respostas são autoexplicativas: sempre dizem o estado atual e
+        repetem o comando contrário (ligar ↔ desligar), pra não depender de
+        quem lembre a sintaxe.
+        """
         kw = self._normalize_alert(keyword)
         if kw not in self.state["alertas"]:
-            return False, f"⚠️ Alerta `{kw}` não encontrado."
+            return False, (
+                f"⚠️ Alerta `{kw}` não encontrado\n\n"
+                f"🔔 Cadastre primeiro: `/alertas add {kw}`"
+            )
         flags = self._get_whatsapp_flags()
         if enabled:
             if kw in flags:
-                return False, f"⚠️ `{kw}` já vai pro WhatsApp 📲."
+                return False, (
+                    f"⚠️ `{kw}` **já vai pro WhatsApp** 📲\n\n"
+                    f"🔕 Pra desligar: `/alertas wa {kw}`"
+                )
             flags.append(kw)
             save_data(self.state)
-            return True, f"✅ `{kw}` agora também vai pro WhatsApp 📲"
+            return True, (
+                f"✅ `{kw}` **agora também vai pro WhatsApp** 📲\n\n"
+                "📩 Entrega no grupo Sol ☀️ com menção no Douglas\n"
+                f"🔕 Pra desligar: `/alertas wa {kw}`"
+            )
         if kw not in flags:
-            return False, f"⚠️ `{kw}` não estava indo pro WhatsApp."
+            return False, (
+                f"⚠️ `{kw}` **não estava indo pro WhatsApp**\n\n"
+                f"📲 Pra ligar: `/alertas wa {kw}`"
+            )
         flags.remove(kw)
         save_data(self.state)
-        return True, f"✅ `{kw}` voltou a ir só pro Telegram."
+        return True, (
+            f"🔕 `{kw}` **voltou a ir só pro Telegram**\n\n"
+            f"📲 Pra ligar de novo: `/alertas wa {kw}`"
+        )
 
     def remove_alert(self, keyword):
         """Remove uma palavra-chave de alerta (e sua marca WhatsApp)."""
@@ -235,7 +256,7 @@ class OfferService:
         """Retorna lista formatada dos alertas ativos."""
         if not self.state["alertas"]:
             return "Nenhum alerta ativo no momento."
-        return "\n".join([f"- `{a}`" for a in self.state["alertas"]])
+        return "\n".join([f"• `{a}`" for a in self.state["alertas"]])
 
     def check_keyword_matches(self, message_text):
         """Retorna TODAS as keywords monitoradas presentes na mensagem.

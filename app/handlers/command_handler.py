@@ -29,18 +29,43 @@ class CommandHandler:
         return items
 
     @staticmethod
-    def format_bulk_response(results, ok_emoji="✅", warn_emoji="⚠️"):
-        """Monta resposta única agrupada por status a partir dos results bulk."""
+    def format_bulk_response(
+        results,
+        entidade="alerta",
+        verbo="adicionado",
+        total=None,
+        rotulo_total="alertas ativos",
+    ):
+        """Monta a resposta de add/rm: o que mudou, o que não mudou e o total.
+
+        - `entidade`/`verbo` dão o título no singular ("Alerta adicionado") ou
+          no plural ("2 alertas adicionados")
+        - `total` + `rotulo_total` fecham com o estado atual ("📊 14 alertas
+          ativos") — quem executa o comando sai sabendo onde parou
+        - itens que não mudaram vêm com o motivo, um por linha
+        """
         ok_items = [item for item, ok, _ in results if ok]
         fail_items = [(item, msg) for item, ok, msg in results if not ok]
 
         blocks = []
+
         if ok_items:
-            blocks.append(f"{ok_emoji} **Sucesso:** " + ", ".join(f"`{i}`" for i in ok_items))
+            emoji = "🗑️" if verbo.startswith("remov") else "✅"
+            if len(ok_items) == 1:
+                titulo = f"{entidade.capitalize()} {verbo}"
+            else:
+                titulo = f"{len(ok_items)} {entidade}s {verbo}s"
+            linhas = "\n".join(f"• `{item}`" for item in ok_items)
+            blocks.append(f"{emoji} **{titulo}**\n\n{linhas}")
+
         if fail_items:
-            fail_lines = "\n".join(f"{warn_emoji} `{item}`: {msg}" for item, msg in fail_items)
-            blocks.append(fail_lines)
-        return "\n".join(blocks)
+            linhas = "\n".join(f"• `{item}`: {msg}" for item, msg in fail_items)
+            blocks.append(f"⚠️ **{len(fail_items)} sem alteração**\n\n{linhas}")
+
+        if total is not None:
+            blocks.append(f"📊 **{total}** {rotulo_total}")
+
+        return "\n\n".join(blocks)
 
     def register(self, forward_to):
         """Registra todos os handlers de comando no cliente Telegram."""
@@ -157,13 +182,15 @@ class CommandHandler:
             args = args_text.split() if args_text else []
 
             if not args:
-                groups_list = self.offer_service.get_groups_list()
+                grupos = self.offer_service.state["grupos"]
+                grupos_list = self.offer_service.get_groups_list()
                 msg = (
-                    "**📦 Grupos Monitorados:**\n"
-                    + groups_list
-                    + "\n\n**⚙️ Como gerenciar:**"
-                    + "\n➕ Para adicionar: `/grupos add nomedogrupo`"
-                    + "\n➖ Para remover: `/grupos rm nomedogrupo`"
+                    f"📦 **Grupos monitorados ({len(grupos)})**\n\n"
+                    f"{grupos_list}\n\n"
+                    "⚙️ **Como gerenciar**\n"
+                    "➕ `/grupos add nomedogrupo`\n"
+                    "➖ `/grupos rm nomedogrupo`\n"
+                    "💡 Em massa: `/grupos add grupo1, grupo2`"
                 )
                 await event.respond(msg)
                 return
@@ -179,7 +206,15 @@ class CommandHandler:
                     )
                 else:
                     results, _ = self.offer_service.add_groups(items)
-                    await event.respond(self.format_bulk_response(results))
+                    await event.respond(
+                        self.format_bulk_response(
+                            results,
+                            entidade="grupo",
+                            verbo="adicionado",
+                            total=len(self.offer_service.state["grupos"]),
+                            rotulo_total="grupos monitorados",
+                        )
+                    )
             elif cmd in ["rm", "del", "remove"]:
                 if not items:
                     await event.respond(
@@ -187,7 +222,15 @@ class CommandHandler:
                     )
                 else:
                     results, _ = self.offer_service.remove_groups(items)
-                    await event.respond(self.format_bulk_response(results))
+                    await event.respond(
+                        self.format_bulk_response(
+                            results,
+                            entidade="grupo",
+                            verbo="removido",
+                            total=len(self.offer_service.state["grupos"]),
+                            rotulo_total="grupos monitorados",
+                        )
+                    )
 
             raise events.StopPropagation
 
@@ -200,13 +243,15 @@ class CommandHandler:
             args = args_text.split() if args_text else []
 
             if not args:
+                alertas = self.offer_service.state["alertas"]
                 alerts_list = self.offer_service.get_alerts_list()
                 msg = (
-                    "**🔔 Alertas Ativos:**\n"
-                    + alerts_list
-                    + "\n\n**⚙️ Como gerenciar:**"
-                    + "\n➕ Para adicionar: `/alertas add iphone`"
-                    + "\n➖ Para remover: `/alertas rm shampoo`"
+                    f"🔔 **Alertas ativos ({len(alertas)})**\n\n"
+                    f"{alerts_list}\n\n"
+                    "⚙️ **Como gerenciar**\n"
+                    "➕ `/alertas add palavra`\n"
+                    "➖ `/alertas rm palavra`\n"
+                    "📲 `/alertas wa palavra` — vai pro WhatsApp também"
                 )
                 await event.respond(msg)
                 return
@@ -223,7 +268,14 @@ class CommandHandler:
                 else:
                     results, _ = self.offer_service.add_alerts(items)
                     await event.respond(
-                        self.format_bulk_response(results) + self.whatsapp_hint(results)
+                        self.format_bulk_response(
+                            results,
+                            entidade="alerta",
+                            verbo="adicionado",
+                            total=len(self.offer_service.state["alertas"]),
+                            rotulo_total="alertas ativos",
+                        )
+                        + self.whatsapp_hint(results)
                     )
             elif cmd == "wa":
                 if not items:
@@ -242,7 +294,25 @@ class CommandHandler:
                         "⚠️ **Uso correto:** `/alertas rm iphone, shampoo`"
                     )
                 else:
+                    # Pega as marcas WhatsApp ANTES da remoção (o remove limpa junto)
+                    wa_removidos = [
+                        kw
+                        for kw in items
+                        if self.offer_service.has_whatsapp_flag(kw)
+                    ]
                     results, _ = self.offer_service.remove_alerts(items)
-                    await event.respond(self.format_bulk_response(results))
+                    msg = self.format_bulk_response(
+                        results,
+                        entidade="alerta",
+                        verbo="removido",
+                        total=len(self.offer_service.state["alertas"]),
+                        rotulo_total="alertas ativos",
+                    )
+                    if wa_removidos:
+                        msg += (
+                            "\n\n🔕 Também saiu do envio pro WhatsApp: "
+                            + ", ".join(f"`{kw}`" for kw in wa_removidos)
+                        )
+                    await event.respond(msg)
 
             raise events.StopPropagation
