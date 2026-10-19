@@ -66,8 +66,10 @@ reinicar_bot.bat
 ############################################
 # 📂 DADOS LOCAIS
 ############################################
-# /data (sem barra no fim) também cobre o symlink criado em 11/10/2026:
-# o estado real vive em /home/ubuntu/dodo-state/botOfertas/data
+# O estado real saiu da árvore em 19/10/2026: vive em
+# /root/dodo/data/telegram/botOfertas/data (bind do container).
+# O path /data local não existe mais — a regra fica por segurança,
+# caso um symlink seja recriado aqui.
 /data
 _contexto-ia/
 scripts/
