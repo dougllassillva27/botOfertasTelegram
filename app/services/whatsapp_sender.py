@@ -9,7 +9,7 @@ import json
 import logging
 import os
 import urllib.request
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta, timezone
 
 logger = logging.getLogger(__name__)
 

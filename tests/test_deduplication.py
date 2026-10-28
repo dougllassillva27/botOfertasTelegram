@@ -3,8 +3,6 @@ Testes para o módulo OfferDeduplicator.
 """
 
 import pytest
-import json
-from pathlib import Path
 from datetime import datetime, timezone, timedelta
 from app.services.deduplication import OfferDeduplicator
 

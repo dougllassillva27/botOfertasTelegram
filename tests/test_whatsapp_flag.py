@@ -3,8 +3,6 @@ Testes unitários para a flag "whatsapp" dos alertas.
 Cobre: ligar, desligar, verificar, limpeza automática no remove.
 """
 
-import pytest
-from unittest.mock import MagicMock
 
 
 class TestWhatsAppFlag:
