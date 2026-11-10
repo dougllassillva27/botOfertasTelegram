@@ -35,6 +35,8 @@ A persistência é JSON local (sem banco de dados externo), e a execução cont�
 ## Highlights Técnicos
 
 - **Monitoramento contínuo 24h** — escuta passiva via MTProto em todos os grupos cadastrados
+- **Catch-up de segurança** — relê o topo dos grupos monitorados em rodízio (1 grupo/s) e recupera o que o push do Telegram atrasou ou perdeu: o servidor corta a fila de updates de canais movimentados e o Telethon só percebe no timeout interno de 15 min (uma oferta de BUG chegou 11 min atrasada por isso)
+- **Alerta de atraso** — oferta entregue com mais de 60s de atraso é logada como `WARNING` com o tempo exato
 - **Alertas por palavra-chave** — casamento por regex com plural tolerante (`\bkw(s?)\b`)
 - **Rota WhatsApp opcional** — keyword marcada vai para Telegram **e** WhatsApp, com menção nativa
 - **Busca retroativa (`/buscar`)** — varredura dos últimos 7 dias em todos os grupos, limitada a 30 resultados contra FloodWait
@@ -43,7 +45,7 @@ A persistência é JSON local (sem banco de dados externo), e a execução cont�
 - **Auditoria** — ofertas puladas registradas em `logs/Logs.txt` com timestamp e motivo
 - **Watchdog** — mata o processo se ficar sem atividade; o Docker o reinicia
 - **Arquitetura modular** — handlers separados, serviços dedicados, sem monólito
-- **98 testes unitários** — pytest, cobrindo serviços, handlers, deduplicação, watchdog e envio WhatsApp
+- **130 testes unitários** — pytest, cobrindo serviços, handlers, catch-up, deduplicação, watchdog e envio WhatsApp
 
 ---
 
@@ -57,12 +59,15 @@ Userbot Telethon (MTProto)
         |
         +-- CommandHandler   /comandos /buscar /grupos /alertas /getid
         |
-        +-- MessageHandler   filtra por keyword + dedup
+        +-- MessageHandler   filtra por keyword + dedup (em task própria)
         |        |
         |        +---> Telegram: encaminha para Central de Comando
         |        |
         |        +---> WhatsApp: se keyword marcada, envia para o grupo
         |                     do Sol com mencao nativa (via ponte :3001)
+        |
+        +-- CatchupPoller    relê o topo dos grupos (1/s) e entrega o que
+        |                    o push perdeu -> mesmo MessageHandler
         |
         +-- CallbackHandler  (vazio, reservado)
         |
@@ -91,9 +96,10 @@ botOfertas/
 |   |   +-- callback_handler.py   # Vazio, reservado
 |   +-- services/
 |       |-- offer_service.py      # Grupos, alertas, flags, busca
+|       |-- catchup_poller.py     # Varredura de seguranca (push perdido)
 |       |-- deduplication.py      # Hash exato + fuzzy, expiracao 48h
 |       +-- whatsapp_sender.py    # POST na ponte do WhatsApp com mencao
-|-- tests/                       # 95 testes unitarios (pytest)
+|-- tests/                       # 126 testes unitarios (pytest)
 |-- data/                        # Estado + sessao (gitignored)
 |-- logs/                        # Logs.txt unificado (gitignored)
 |-- docs/                        # Documentacao de design
@@ -119,7 +125,10 @@ Camada de persistência. `load_data` cria o `data.json` com estado padrão na pr
 Registra e processa os comandos do grupo de controle. O `add` de alerta anexa uma dica de como ligar o envio WhatsApp; `/alertas wa` liga/desliga a marca de uma keyword.
 
 ### `app/handlers/message_handler.py`
-Filtra mensagens dos grupos monitorados, aplica deduplicação, casa **todas** as keywords de alerta presentes na mensagem e encaminha para o Telegram (o aviso lista cada keyword que bateu). Se **qualquer uma** delas estiver marcada como prioritária, também dispara o envio para o WhatsApp (falha na ponte não interrompe o fluxo do Telegram).
+Filtra mensagens dos grupos monitorados, casa **todas** as keywords de alerta presentes na mensagem e encaminha para o Telegram (o aviso lista cada keyword que bateu). Se **qualquer uma** delas estiver marcada como prioritária, também dispara o envio para o WhatsApp (falha na ponte não interrompe o fluxo do Telegram). Cada evento roda em task própria (`dispatch`) — o Telethon aguarda o handler antes de entregar a próxima mensagem, então um envio lento aqui travaria a recepção de todos os grupos. O POST na ponte sai por `asyncio.to_thread` (é HTTP síncrono) e o par checagem+registro da deduplicação fica sob `asyncio.Lock` (duas entregas simultâneas da mesma oferta não podem passar as duas). Oferta com mais de 60s de atraso gera `WARNING` com o tempo.
+
+### `app/services/catchup_poller.py`
+Varredura de segurança contra atraso de push. O Telegram corta a fila de updates de canais movimentados (`channelTooLong`) e o Telethon só busca o que faltou no timeout interno de 15 min (`NO_UPDATES_TIMEOUT`) — em 10/11/2026 uma oferta de BUG das 17:20 foi entregue às 17:31 por isso. O poller relê o topo de cada grupo monitorado em rodízio (1 requisição/s, volta completa em ~53s com 53 grupos), mantém um cursor por grupo e processa o que for mais novo pelo mesmo `MessageHandler`, que evita repetir o que o push já tratou.
 
 ### `app/handlers/callback_handler.py`
 Vazio, reservado. Foi ocupado por botões inline de confirmação WhatsApp, mas o Telegram descarta o `reply_markup` quando o remetente é conta pessoal (userbot MTProto) — só contas Bot API podem enviar inline keyboards. A alternativa adotada é `/alertas wa <palavra>`.
@@ -134,7 +143,7 @@ Gera hash a partir de título + descrição + URL normalizados. Detecta duplicat
 Único módulo que conhece a API da ponte do WhatsApp. Monta o texto da oferta (com o handle de menção no corpo — obrigatório para a menção renderizar) e faz o POST `/send` com o campo `mentions`.
 
 ### `tests/`
-98 testes unitários: `offer_service` (37), `deduplication` (17), `command_handler` (10), `whatsapp_flag` (8), `watchdog` (8), `whatsapp_sender` (7), `message_whatsapp` (6), `storage_backup` (5).
+130 testes unitários: `offer_service` (37), `command_handler` (22), `deduplication` (17), `message_dispatch` (11), `catchup_poller` (9), `watchdog` (8), `whatsapp_flag` (8), `whatsapp_sender` (7), `message_whatsapp` (6), `storage_backup` (5).
 
 ---
 
@@ -144,15 +153,18 @@ Gera hash a partir de título + descrição + URL normalizados. Detecta duplicat
 1. Bot inicia e conecta via MTProto com as credenciais do .env
 2. Estado carregado de data/data.json (grupos, alertas, flags WhatsApp)
 3. Registro de ofertas enviadas carregado (expira em 48h)
-4. Handlers registrados; loop de escuta inicia
+4. Handlers registrados; loop de escuta inicia (push) e a varredura de catch-up começa após 60s
 5. Mensagem chega em grupo monitorado
-6. Deduplicacao verifica hash exato + fuzzy
-7. Keyword casou? Encaminha para o Telegram com metadata de origem
+6. Keyword casou? Deduplicacao verifica hash exato + fuzzy
+7. Encaminha para o Telegram com metadata de origem
 8. Keyword marcada como prioritaria? Envia tambem para o WhatsApp
    com mencao nativa (via ponte local)
 9. Comando digitado no grupo de controle? CommandHandler responde
 10. Alteracoes persistidas em data/data.json
 ```
+
+Se o push não entregar (gap de updates), a varredura de catch-up relê o grupo
+em até ~1 min e aplica os passos 6–8 para a mensagem perdida.
 
 ---
 
@@ -184,6 +196,10 @@ Definidas em `.env` (não versionado; `!.env.example` é o template).
 | `FORWARD_TO`    | Não         | Destino das ofertas: `me`, ID numérico ou `@username` (padrão `me`) |
 | `WATCHDOG_TIMEOUT_MIN`      | Não | Minutos sem atividade antes de matar o processo (padrão 40) |
 | `WATCHDOG_CHECK_INTERVAL_MIN` | Não | Intervalo de checagem do watchdog (padrão 5)          |
+| `CATCHUP_ENABLED`           | Não | Liga a varredura de segurança dos grupos (padrão `1`)      |
+| `CATCHUP_INTERVAL`          | Não | Segundos entre um grupo e outro na varredura (padrão 1.0)  |
+| `CATCHUP_LIMIT`             | Não | Mensagens relidas por grupo em cada passagem (padrão 20)   |
+| `CATCHUP_PRIME_DELAY`       | Não | Segundos antes da primeira varredura, para o client conectar (padrão 60) |
 
 Para a rota WhatsApp, o `whatsapp_sender` aceita override por env (`WHATSAPP_BRIDGE_URL`, `WHATSAPP_GROUP_ID`, `WHATSAPP_MENTION_JID`, `WHATSAPP_BRIDGE_TIMEOUT`); os valores padrão já apontam para a ponte local e o grupo do Sol.
 

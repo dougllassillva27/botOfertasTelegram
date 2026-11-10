@@ -1,24 +1,30 @@
 import asyncio
+import io
 import logging
+import sys
 from pathlib import Path
+
 from telethon import TelegramClient, events
+
 from app.config import (
-    API_ID,
     API_HASH,
-    SESSION_NAME,
+    API_ID,
+    CATCHUP_ENABLED,
+    CATCHUP_INTERVAL,
+    CATCHUP_LIMIT,
+    CATCHUP_PRIME_DELAY,
     FORWARD_TO,
-    WATCHDOG_TIMEOUT_MIN,
+    SESSION_NAME,
     WATCHDOG_CHECK_INTERVAL_MIN,
+    WATCHDOG_TIMEOUT_MIN,
 )
-from app.storage import load_data
-from app.services.offer_service import OfferService
-from app.services.watchdog import ActivityLoggingHandler, ActivityTracker, watchdog_loop
+from app.handlers.callback_handler import CallbackHandler
 from app.handlers.command_handler import CommandHandler
 from app.handlers.message_handler import MessageHandler
-from app.handlers.callback_handler import CallbackHandler
-
-import sys
-import io
+from app.services.catchup_poller import CatchupPoller
+from app.services.offer_service import OfferService
+from app.services.watchdog import ActivityLoggingHandler, ActivityTracker, watchdog_loop
+from app.storage import load_data
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8")
@@ -66,10 +72,32 @@ async def main():
 
         logger.info(f"Commands will be monitored in chat ID: {FORWARD_TO}")
 
-        # Handler principal de mensagens
+        # Handler principal de mensagens — processa em task própria para não
+        # segurar o despacho de updates (o Telethon aguarda o handler antes de
+        # entregar a próxima mensagem, de qualquer grupo).
         @client.on(events.NewMessage())
         async def handle_message(event):
-            await message_handler.handle_message(event)
+            message_handler.dispatch(event)
+
+        # Varredura de segurança: recupera ofertas que o push do Telegram
+        # atrasou/perdeu (gap de updates) — ver app/services/catchup_poller.py
+        if CATCHUP_ENABLED:
+            catchup = CatchupPoller(
+                client,
+                message_handler,
+                offer_service,
+                interval=CATCHUP_INTERVAL,
+                limit=CATCHUP_LIMIT,
+                prime_delay=CATCHUP_PRIME_DELAY,
+            )
+            asyncio.create_task(catchup.run())
+            logger.info(
+                f"Catch-up ativo: {len(offer_service.state['grupos'])} grupos, "
+                f"1 a cada {CATCHUP_INTERVAL}s (volta completa ~"
+                f"{int(len(offer_service.state['grupos']) * CATCHUP_INTERVAL)}s)"
+            )
+        else:
+            logger.info("Catch-up desativado (CATCHUP_ENABLED=0)")
 
         logger.info("Bot is running and listening for offers! Press Ctrl+C to stop.")
         asyncio.create_task(
