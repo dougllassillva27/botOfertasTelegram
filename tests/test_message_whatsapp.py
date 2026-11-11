@@ -75,6 +75,55 @@ class TestWhatsappDispatch:
         handler.client.send_message.assert_awaited_once()
 
 
+class TestDestinoSemFlag:
+    """Destino em DM dispara mesmo sem a keyword estar marcada pra o grupo."""
+
+    def test_keyword_de_destino_envia_so_dm(self, handler, offer_service):
+        from app.services.whatsapp_destinos import add_destino
+
+        add_destino(offer_service.state, "Amigo", "5551999999999", ["iphone"])
+        event = _make_event("iPhone por R$ 1500 https://loja.com/x")
+
+        with patch(
+            "app.handlers.message_handler.send_offer_to_whatsapp"
+        ) as mock_send:
+            _run(handler, event)
+
+        mock_send.assert_called_once()
+        args = mock_send.call_args[0]
+        assert args[4] is False  # grupo do dono não recebe
+        assert [d["nome"] for d in args[3]] == ["Amigo"]
+
+    def test_keyword_marcada_e_de_destino_envia_grupo_e_dm(self, handler, offer_service):
+        from app.services.whatsapp_destinos import add_destino
+
+        offer_service.set_whatsapp_flag("iphone", True)
+        add_destino(offer_service.state, "Amigo", "5551999999999", ["iphone"])
+        event = _make_event("iPhone por R$ 1500 https://loja.com/x")
+
+        with patch(
+            "app.handlers.message_handler.send_offer_to_whatsapp"
+        ) as mock_send:
+            _run(handler, event)
+
+        args = mock_send.call_args[0]
+        assert args[4] is True
+        assert [d["nome"] for d in args[3]] == ["Amigo"]
+
+    def test_keyword_fora_de_tudo_nao_toca_na_ponte(self, handler, offer_service):
+        from app.services.whatsapp_destinos import add_destino
+
+        add_destino(offer_service.state, "Amigo", "5551999999999", ["notebook"])
+        event = _make_event("iPhone por R$ 1500 https://loja.com/x")
+
+        with patch(
+            "app.handlers.message_handler.send_offer_to_whatsapp"
+        ) as mock_send:
+            _run(handler, event)
+
+        mock_send.assert_not_called()
+
+
 class TestMultipleKeywords:
     """Oferta que bate mais de uma keyword (caso ORFEU Café de 11/10/2026)."""
 

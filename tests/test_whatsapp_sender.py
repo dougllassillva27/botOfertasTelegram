@@ -93,3 +93,113 @@ class TestSendOfferToWhatsapp:
         ):
             ok = ws.send_offer_to_whatsapp("oferta", "promotop", msg_date)
         assert ok is False
+
+
+class TestDestinosEmDm:
+    """Envio extra em conversa individual (além do grupo com menção)."""
+
+    MSG_DATE = datetime(2026, 10, 9, 14, 30, tzinfo=timezone.utc)
+
+    def _payloads(self, mock_open):
+        return [json.loads(chamada[0][0].data) for chamada in mock_open.call_args_list]
+
+    def test_text_without_mention_has_no_handle(self):
+        """Em DM não existe menção: o @número seria texto solto."""
+        text = ws.build_offer_text("oferta", "promotop", self.MSG_DATE, mention=False)
+        assert "@" + ws.WHATSAPP_MENTION_JID.split("@")[0] not in text
+        assert "Nova oferta" in text
+        assert "promotop" in text
+
+    def test_sends_group_then_each_destino(self):
+        destinos = [
+            {"nome": "Amigo", "jid": "5551999999999@s.whatsapp.net", "keywords": ["orfeu"]},
+            {"nome": "Outro", "jid": "5551888888888@s.whatsapp.net", "keywords": ["bug"]},
+        ]
+        with patch.object(
+            ws.urllib.request,
+            "urlopen",
+            return_value=MagicMock(
+                read=lambda: json.dumps({"success": True, "messageId": "x"}).encode(),
+                __enter__=lambda s: s,
+                __exit__=lambda s, *a: False,
+            ),
+        ) as mock_open:
+            ok = ws.send_offer_to_whatsapp("oferta", "promotop", self.MSG_DATE, destinos)
+
+        assert ok is True
+        payloads = self._payloads(mock_open)
+        assert len(payloads) == 3  # grupo + 2 DMs
+        assert payloads[0]["chatId"] == ws.WHATSAPP_GROUP_ID
+        assert payloads[0]["mentions"] == [ws.WHATSAPP_MENTION_JID]
+        assert [p["chatId"] for p in payloads[1:]] == [d["jid"] for d in destinos]
+        for dm in payloads[1:]:
+            assert "mentions" not in dm
+            assert "@555195782073" not in dm["message"]
+
+    def test_failing_destino_does_not_block_the_rest(self):
+        """Falha num DM não impede o outro nem muda o resultado do grupo."""
+        destinos = [
+            {"nome": "Amigo", "jid": "5551999999999@s.whatsapp.net", "keywords": ["orfeu"]},
+            {"nome": "Outro", "jid": "5551888888888@s.whatsapp.net", "keywords": ["bug"]},
+        ]
+        calls = []
+
+        def fake_urlopen(request, timeout=None):
+            payload = json.loads(request.data)
+            calls.append(payload["chatId"])
+            if payload["chatId"] == "5551999999999@s.whatsapp.net":
+                raise ConnectionRefusedError("down")
+            return MagicMock(
+                read=lambda: json.dumps({"success": True}).encode(),
+                __enter__=lambda s: s,
+                __exit__=lambda s, *a: False,
+            )
+
+        with patch.object(ws.urllib.request, "urlopen", side_effect=fake_urlopen):
+            ok = ws.send_offer_to_whatsapp("oferta", "promotop", self.MSG_DATE, destinos)
+
+        assert ok is True
+        assert "5551888888888@s.whatsapp.net" in calls  # segundo destino tentado
+        assert calls[0] == ws.WHATSAPP_GROUP_ID
+
+    def test_destino_payload_error_is_contained(self):
+        """Destino malformado (sem jid) não derruba o envio já feito ao grupo."""
+        with patch.object(
+            ws.urllib.request,
+            "urlopen",
+            return_value=MagicMock(
+                read=lambda: json.dumps({"success": True}).encode(),
+                __enter__=lambda s: s,
+                __exit__=lambda s, *a: False,
+            ),
+        ):
+            ok = ws.send_offer_to_whatsapp(
+                "oferta", "promotop", self.MSG_DATE, [{"nome": "Quebrado"}]
+            )
+        assert ok is True
+
+    def test_group_false_skips_group_post(self):
+        """Keyword que só interessa a um destino não vai pro grupo do dono."""
+        destino = {
+            "nome": "Amigo",
+            "jid": "5551999999999@s.whatsapp.net",
+            "keywords": ["moedor"],
+        }
+        with patch.object(
+            ws.urllib.request,
+            "urlopen",
+            return_value=MagicMock(
+                read=lambda: json.dumps({"success": True}).encode(),
+                __enter__=lambda s: s,
+                __exit__=lambda s, *a: False,
+            ),
+        ) as mock_open:
+            ok = ws.send_offer_to_whatsapp(
+                "oferta", "promotop", self.MSG_DATE, [destino], False
+            )
+
+        assert ok is True
+        payloads = self._payloads(mock_open)
+        assert len(payloads) == 1
+        assert payloads[0]["chatId"] == destino["jid"]
+        assert "mentions" not in payloads[0]

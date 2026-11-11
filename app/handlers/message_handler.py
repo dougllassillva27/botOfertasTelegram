@@ -18,6 +18,7 @@ import logging
 from collections import deque
 from datetime import datetime, timedelta, timezone
 
+from app.services.whatsapp_destinos import destinos_for
 from app.services.whatsapp_sender import send_offer_to_whatsapp
 
 logger = logging.getLogger(__name__)
@@ -142,17 +143,29 @@ class MessageHandler:
             silent=True,
         )
 
-        # Destino extra: se QUALQUER keyword da mensagem estiver marcada,
-        # a oferta vai pro WhatsApp (não só a primeira da lista — uma
-        # oferta de café Orfeu bate `café` e `orfeu`).
+        # Rota WhatsApp: dois gatilhos independentes.
+        #   - keyword marcada (`/alertas wa`) → grupo Sol com menção + destinos
+        #     em DM que incluam a keyword;
+        #   - keyword fora das marcas, mas no recorte de algum destino → só a DM
+        #     (o grupo do dono não recebe o que ele não pediu).
         flagged = [kw for kw in matched_keywords if self.offer_service.has_whatsapp_flag(kw)]
-        if flagged:
-            logger.info(f"Enviando oferta pro WhatsApp pelos alertas {flagged}")
+        destinos = destinos_for(self.offer_service.state, matched_keywords)
+        if flagged or destinos:
+            logger.info(
+                f"Oferta pro WhatsApp: alertas {flagged}"
+                f" | grupo={'sim' if flagged else 'não'}"
+                f" | destinos={[d['nome'] for d in destinos]}"
+            )
             try:
                 # to_thread: a ponte é HTTP síncrono (urllib) e bloquearia o
                 # event loop por até WHATSAPP_BRIDGE_TIMEOUT segundos.
                 await asyncio.to_thread(
-                    send_offer_to_whatsapp, message_text, chat_title, message.date
+                    send_offer_to_whatsapp,
+                    message_text,
+                    chat_title,
+                    message.date,
+                    destinos,
+                    bool(flagged),
                 )
             except Exception as e:
                 logger.warning(f"Falha ao enviar oferta pro WhatsApp: {e}")

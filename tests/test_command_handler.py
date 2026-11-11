@@ -205,6 +205,57 @@ class TestRespostaRealDoComando:
         capturados = _captura_handlers(offer_service)
         return next(fn for pat, fn in capturados if pat.endswith("/grupos(.*)"))
 
+    @pytest.fixture
+    def wa_handler(self, offer_service):
+        capturados = _captura_handlers(offer_service)
+        return next(fn for pat, fn in capturados if pat.endswith("/wa(.*)"))
+
+    def test_wa_vazio_lista_com_instrucoes(self, wa_handler):
+        texto = _roda(wa_handler, "")
+        assert "Nenhum destino extra" in texto
+        assert "/wa add" in texto
+
+    def test_wa_add_cadastra_com_keywords(self, wa_handler, offer_service):
+        texto = _roda(wa_handler, " add Amigo 5551999999999 iphone")
+        assert "✅ Destino `Amigo` cadastrado" in texto
+        assert "`iphone`" in texto
+        assert offer_service.state["whatsapp_destinos"][0]["jid"] == "5551999999999@s.whatsapp.net"
+
+    def test_wa_add_sem_numero_mostra_uso(self, wa_handler):
+        texto = _roda(wa_handler, " add Amigo")
+        assert "Uso correto" in texto
+        assert "/wa add Amigo 5551999999999" in texto
+
+    def test_wa_add_numero_invalido(self, wa_handler):
+        texto = _roda(wa_handler, " add Amigo 123")
+        assert "inválido" in texto
+
+    def test_wa_kw_define_o_que_recebe(self, wa_handler, offer_service):
+        _roda(wa_handler, " add Amigo 5551999999999")
+        texto = _roda(wa_handler, " kw Amigo notebook, teclado")
+        assert "agora recebe" in texto
+        assert "`notebook`" in texto and "`teclado`" in texto
+
+    def test_wa_kw_sem_nome_mostra_uso(self, wa_handler):
+        texto = _roda(wa_handler, " kw")
+        assert "Uso correto" in texto
+
+    def test_wa_kw_vazio_para_de_receber(self, wa_handler, offer_service):
+        """`/wa kw Amigo` sem keywords é o jeito de desligar o destino."""
+        _roda(wa_handler, " add Amigo 5551999999999 iphone")
+        texto = _roda(wa_handler, " kw Amigo")
+        assert "não recebe mais nada" in texto
+
+    def test_wa_rm_remove(self, wa_handler, offer_service):
+        _roda(wa_handler, " add Amigo 5551999999999 iphone")
+        texto = _roda(wa_handler, " rm Amigo")
+        assert "removido" in texto
+        assert offer_service.state["whatsapp_destinos"] == []
+
+    def test_wa_desconhecido_mostra_ajuda(self, wa_handler):
+        texto = _roda(wa_handler, " xyz")
+        assert "não reconhecido" in texto
+
     def test_add_mostra_total_e_dica_whatsapp(self, alertas_handler, offer_service):
         texto = _roda(alertas_handler, " add orfeu")
         assert "✅ **Alerta adicionado**" in texto

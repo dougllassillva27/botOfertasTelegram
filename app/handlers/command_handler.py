@@ -6,6 +6,13 @@ import asyncio
 
 from telethon import events
 
+from app.services.whatsapp_destinos import (
+    add_destino,
+    list_destinos,
+    remove_destino,
+    set_keywords,
+)
+
 
 class CommandHandler:
     """Registra e processa todos os comandos do bot."""
@@ -74,6 +81,7 @@ class CommandHandler:
         self._register_buscar(forward_to)
         self._register_grupos(forward_to)
         self._register_alertas(forward_to)
+        self._register_wa(forward_to)
 
     @staticmethod
     def whatsapp_hint(results):
@@ -91,6 +99,62 @@ class CommandHandler:
             "\n\n📲 **Pra enviar também no WhatsApp:** `/alertas wa " + kw + "`"
             " (liga/desliga a qualquer momento)"
         )
+
+    def _register_wa(self, forward_to):
+        """Comandos `/wa` — destinos extras em DM, com recorte de keywords."""
+
+        @self.client.on(events.NewMessage(chats=forward_to, pattern=r"(?i)^/wa(.*)"))
+        async def handle_wa(event):
+            args_text = event.pattern_match.group(1).strip()
+            args = args_text.split() if args_text else []
+            cmd = args[0].lower() if args else ""
+            state = self.offer_service.state
+
+            if cmd in ("", "list"):
+                await event.respond(list_destinos(state))
+                raise events.StopPropagation
+
+            if cmd == "add":
+                if len(args) < 3:
+                    await event.respond(
+                        "⚠️ **Uso correto:** `/wa add Amigo 5551999999999`\n"
+                        "📱 Número no formato DDI+DDD+número (só dígitos).\n"
+                        "🔔 Depois escolha o que ele recebe: `/wa kw Amigo orfeu`"
+                    )
+                    raise events.StopPropagation
+                keywords = self.parse_bulk_items(" ".join(args[3:]))
+                _, msg = add_destino(state, args[1], args[2], keywords)
+                await event.respond(msg)
+                raise events.StopPropagation
+
+            if cmd == "kw":
+                if len(args) < 2:
+                    await event.respond(
+                        "⚠️ **Uso correto:** `/wa kw Amigo orfeu, bug`\n"
+                        "🔕 Sem keywords: `/wa kw Amigo` (para de receber)"
+                    )
+                    raise events.StopPropagation
+                keywords = self.parse_bulk_items(" ".join(args[2:]))
+                _, msg = set_keywords(state, args[1], keywords)
+                await event.respond(msg)
+                raise events.StopPropagation
+
+            if cmd in ("rm", "del", "remove"):
+                if len(args) < 2:
+                    await event.respond("⚠️ **Uso correto:** `/wa rm Amigo`")
+                    raise events.StopPropagation
+                _, msg = remove_destino(state, args[1])
+                await event.respond(msg)
+                raise events.StopPropagation
+
+            await event.respond(
+                "⚠️ **Comando não reconhecido.**\n\n"
+                "📋 `/wa` — lista os destinos\n"
+                "➕ `/wa add Amigo 5551999999999`\n"
+                "🔔 `/wa kw Amigo orfeu, bug`\n"
+                "➖ `/wa rm Amigo`"
+            )
+            raise events.StopPropagation
 
     def _register_getid(self):
         @self.client.on(events.NewMessage(pattern=r"/getid", from_users="me"))
@@ -120,6 +184,11 @@ class CommandHandler:
                 "➖ `/alertas rm teclado`\n"
                 "📲 `/alertas wa teclado` — liga/desliga o envio pro WhatsApp\n"
                 "💡 Em massa: `/alertas add iphone, caixa de som`\n\n"
+                "📤 `/wa`\n"
+                "Gerencia quem mais recebe as ofertas no WhatsApp (DM).\n"
+                "➕ `/wa add Amigo 5551999999999`\n"
+                "🔔 `/wa kw Amigo orfeu, bug` — o que ele recebe\n"
+                "➖ `/wa rm Amigo`\n\n"
                 "ℹ️ `/getid`\n"
                 "Mostra o ID do chat atual para configurações."
             )

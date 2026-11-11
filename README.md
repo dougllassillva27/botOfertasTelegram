@@ -45,7 +45,7 @@ A persistência é JSON local (sem banco de dados externo), e a execução cont�
 - **Auditoria** — ofertas puladas registradas em `logs/Logs.txt` com timestamp e motivo
 - **Watchdog** — mata o processo se ficar sem atividade; o Docker o reinicia
 - **Arquitetura modular** — handlers separados, serviços dedicados, sem monólito
-- **130 testes unitários** — pytest, cobrindo serviços, handlers, catch-up, deduplicação, watchdog e envio WhatsApp
+- **179 testes unitários** — pytest, cobrindo serviços, handlers, catch-up, deduplicação, watchdog, envio WhatsApp e destinos em DM
 
 ---
 
@@ -98,8 +98,9 @@ botOfertas/
 |       |-- offer_service.py      # Grupos, alertas, flags, busca
 |       |-- catchup_poller.py     # Varredura de seguranca (push perdido)
 |       |-- deduplication.py      # Hash exato + fuzzy, expiracao 48h
+|       |-- whatsapp_destinos.py # Destinos extras em DM, recorte por keyword
 |       +-- whatsapp_sender.py    # POST na ponte do WhatsApp com mencao
-|-- tests/                       # 126 testes unitarios (pytest)
+|-- tests/                       # 179 testes unitarios (pytest)
 |-- data/                        # Estado + sessao (gitignored)
 |-- logs/                        # Logs.txt unificado (gitignored)
 |-- docs/                        # Documentacao de design
@@ -143,7 +144,7 @@ Gera hash a partir de título + descrição + URL normalizados. Detecta duplicat
 Único módulo que conhece a API da ponte do WhatsApp. Monta o texto da oferta (com o handle de menção no corpo — obrigatório para a menção renderizar) e faz o POST `/send` com o campo `mentions`.
 
 ### `tests/`
-130 testes unitários: `offer_service` (37), `command_handler` (22), `deduplication` (17), `message_dispatch` (11), `catchup_poller` (9), `watchdog` (8), `whatsapp_flag` (8), `whatsapp_sender` (7), `message_whatsapp` (6), `storage_backup` (5).
+179 testes unitários: `offer_service` (37), `whatsapp_destinos` (32), `command_handler` (31), `deduplication` (17), `whatsapp_sender` (12), `message_dispatch` (11), `message_whatsapp` (9), `catchup_poller` (9), `watchdog` (8), `whatsapp_flag` (8), `storage_backup` (5).
 
 ---
 
@@ -285,11 +286,11 @@ git pull && docker compose up -d --build   # atualizar
 
 ```bash
 cd botOfertas
-.venv/bin/python -m pytest tests/ -q        # suite completa (91 testes)
+.venv/bin/python -m pytest tests/ -q        # suite completa (179 testes)
 .venv/bin/python -m pytest tests/ -v        # verboso
 ```
 
-Cobertura: `offer_service`, `deduplication`, `command_handler`, `watchdog`, `whatsapp_flag`, `whatsapp_sender`, `storage_backup`, `message_whatsapp`.
+Cobertura: `offer_service`, `deduplication`, `command_handler`, `watchdog`, `whatsapp_flag`, `whatsapp_sender`, `whatsapp_destinos`, `storage_backup`, `message_whatsapp`.
 
 Para cobertura de código, instale `pytest-cov` e use `--cov=app`.
 
@@ -310,6 +311,10 @@ Todos os comandos rodam no **Grupo de Controle** (configurado via `FORWARD_TO`).
 | `/alertas add`     | Adiciona keyword; sugere o comando de envio WhatsApp       | `/alertas add teclado` |
 | `/alertas rm`      | Remove keyword (limpa a flag WhatsApp junto)               | `/alertas rm teclado`  |
 | `/alertas wa`      | Liga/desliga o envio WhatsApp de uma keyword               | `/alertas wa teclado`  |
+| `/wa`              | Lista os destinos extras (DM) e o que cada um recebe       | `/wa`                  |
+| `/wa add`          | Cadastra um número para receber em DM (DDI+DDD+número)     | `/wa add Amigo 5551999999999` |
+| `/wa kw`           | Define quais keywords o destino recebe (vazio = desliga)   | `/wa kw Amigo orfeu, bug` |
+| `/wa rm`           | Remove o destino (para de receber)                         | `/wa rm Amigo`         |
 | `/getid`           | Revela o ID numérico do chat atual                         | `/getid`               |
 
 ---
@@ -338,6 +343,30 @@ O `message_handler`, ao encaminhar uma oferta de keyword marcada, chama o `whats
 
 **Detalhe crítico de implementação:** o campo `mentions` sozinho não gera a menção. O WhatsApp/Baileys só renderiza (e notifica) quando o handle `@numero` aparece **no corpo do texto**. O `whatsapp_sender` injeta esse handle na primeira linha. Um `success: true` da ponte não prova que a menção formou — a verificação é visual.
 
+### Destinos extras em conversa individual (`/wa`)
+
+Além do grupo com menção, números avulsos podem receber a oferta em **DM**, cada um
+com seu próprio recorte de keywords — quem só pediu desconto de café não recebe
+alerta de bug de notebook.
+
+```
+/wa add Amigo 5551999999999 iphone, notebook   # cadastra já com o recorte
+/wa kw Amigo orfeu                            # troca o recorte (vazio = desliga)
+/wa                                          # lista destinos e o que cada um recebe
+/wa rm Amigo                                 # para de receber
+```
+
+Regras que o módulo (`app/services/whatsapp_destinos.py`) garante:
+
+- **Só conversa individual.** O JID é normalizado para `<ddi><ddd><numero>@s.whatsapp.net`; grupo (`@g.us`) e LID são recusados. A ponte não valida destino — JID malformado voltaria `success: true` e a mensagem nunca chegaria, então a validação acontece antes do envio.
+- **Nono dígito não é inferido.** Número com 8 dígitos após o DDD é enviado exatamente como foi digitado (`+55 51 9469-4630` → `555194694630`). "Completar" o 9 gera um JID que a ponte aceita com `success: true` e o WhatsApp descarta — foi o que quebrou o primeiro cadastro real em 11/11/2026. O log registra a suspeita, a decisão é de quem cadastra.
+- **Gatilho independente.** A DM sai mesmo com a keyword **fora** de `/alertas wa`: o grupo do dono continua recebendo só o que está marcado, mas o destino recebe tudo que estiver no recorte dele. Oferta que bate keyword marcada **e** keyword de destino vai para os dois.
+- **Recorte por keyword.** Destino só entra quando a oferta bate uma keyword do recorte dele; uma oferta que bate duas keywords do mesmo destino sai uma vez só.
+- **Sem menção no DM.** Em conversa individual não existe menção nativa: o `@numero` apareceria como texto solto, então o texto sai sem ele (só "🔔 Nova oferta").
+- **Falha isolada.** Um destino que falha não impede os outros nem altera o resultado do grupo — o envio pro WhatsApp continua sendo um extra.
+
+> **Número desconhecido não avisa.** Se o destinatário não tiver WhatsApp ou não tiver o número do Sol salvo, a entrega pode cair em filtro/solicitação sem notificação. O primeiro envio deve ser confirmado com a pessoa (pedir para salvar o contato resolve).
+
 ### Comportamento em falha
 
 Se a ponte estiver fora do ar, a oferta **não se perde**: já foi encaminhada para o Telegram antes. A falha é logada em `logs/Logs.txt` e o bot segue. Não há retry.
@@ -350,7 +379,7 @@ O registro completo (contexto, alternativas descartadas, consequências) está e
 
 ## Persistência
 
-- **Estado** (`data/data.json`): grupos monitorados, alertas e flags WhatsApp
+- **Estado** (`data/data.json`): grupos monitorados, alertas, flags WhatsApp e destinos extras de WhatsApp (DM)
 - **Backup automático**: `save_data` grava `data.json.bak-<timestamp>` antes de cada escrita, mantendo os 10 mais recentes (`BACKUP_KEEP`) — blindagem contra sobrescrita acidental
 - **Registro de ofertas** (`data/offers_sent.json`): hash das ofertas enviadas, expira em 48h
 - **Sessão** (`data/*.session`): credencial Telethon persistida após o primeiro login

@@ -13,6 +13,7 @@ from app.services.deduplication import OfferDeduplicator
 def isolate_storage(monkeypatch):
     """Impede que testes escrevam nos arquivos reais de data/."""
     monkeypatch.setattr("app.services.offer_service.save_data", MagicMock())
+    monkeypatch.setattr("app.services.whatsapp_destinos.save_data", MagicMock())
 
 
 @pytest.fixture

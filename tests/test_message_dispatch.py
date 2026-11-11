@@ -122,8 +122,9 @@ class TestFlow:
         event = _make_event("iPhone por R$ 1500 https://loja.com/x")
         seen = {}
 
-        def fake_send(text, title, msg_date):
+        def fake_send(text, title, msg_date, destinos=None, group=True):
             seen["send_thread"] = threading.current_thread()
+            seen["destinos"] = destinos
             return True
 
         async def scenario():
