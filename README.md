@@ -1,11 +1,11 @@
-# Bot de Ofertas — Garimpo Automático de Promoções (Telegram + WhatsApp)
+# Bot de Ofertas  -  Garimpo Automático de Promoções (Telegram + WhatsApp)
 
 ![Status](https://img.shields.io/badge/status-active-success)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 ![Python](https://img.shields.io/badge/python-3.11-blue)
 ![Telethon](https://img.shields.io/badge/telethon-1.33.1-orange)
 
-**Userbot MTProto que monitora dezenas de canais de ofertas em tempo real, filtra por palavras-chave configuráveis e encaminha apenas as promoções relevantes — com rota extra opcional para WhatsApp (menção nativa) nas ofertas prioritárias.**
+**Userbot MTProto que monitora dezenas de canais de ofertas em tempo real, filtra por palavras-chave configuráveis e encaminha apenas as promoções relevantes  -  com rota extra opcional para WhatsApp (menção nativa) nas ofertas prioritárias.**
 
 ---
 
@@ -19,33 +19,34 @@ Também oferece busca retroativa de 7 dias em todos os grupos cadastrados e dedu
 
 ## Visão Geral Técnica
 
-Construído sobre **Telethon** (API MTProto), o bot opera como userbot — ou seja, acessa a conta pessoal do Telegram, o que permite ler mensagens de qualquer grupo ao qual a conta pertence (algo impossível para bots normais da Bot API).
+Construído sobre **Telethon** (API MTProto), o bot opera como userbot  -  ou seja, acessa a conta pessoal do Telegram, o que permite ler mensagens de qualquer grupo ao qual a conta pertence (algo impossível para bots normais da Bot API).
 
 A arquitetura isola quatro responsabilidades:
 
-- **Handlers** — recepção e roteamento de eventos (comandos, mensagens, callbacks)
-- **OfferService** — lógica de negócio (grupos, alertas, busca, formatação)
-- **OfferDeduplicator** — detecção de duplicatas por hash e fuzzy
-- **whatsapp_sender** — entrega opcional via ponte local do WhatsApp
+- **Handlers**  -  recepção e roteamento de eventos (comandos, mensagens, callbacks)
+- **OfferService**  -  lógica de negócio (grupos, alertas, busca, formatação)
+- **OfferDeduplicator**  -  detecção de duplicatas por hash e fuzzy
+- **whatsapp_sender**  -  entrega opcional via ponte local do WhatsApp
 
-A persistência é JSON local (sem banco de dados externo), e a execução contínua é garantida por um watchdog que encerra o processo quando a conexão trava — o `restart: unless-stopped` do Docker o religa.
+A persistência é JSON local (sem banco de dados externo), e a execução contínua é garantida por um watchdog que encerra o processo quando a conexão trava  -  o `restart: unless-stopped` do Docker o religa.
 
 ---
 
 ## Highlights Técnicos
 
-- **Monitoramento contínuo 24h** — escuta passiva via MTProto em todos os grupos cadastrados
-- **Catch-up de segurança** — relê o topo dos grupos monitorados em rodízio (1 grupo/s) e recupera o que o push do Telegram atrasou ou perdeu: o servidor corta a fila de updates de canais movimentados e o Telethon só percebe no timeout interno de 15 min (uma oferta de BUG chegou 11 min atrasada por isso)
-- **Alerta de atraso** — oferta entregue com mais de 60s de atraso é logada como `WARNING` com o tempo exato
-- **Alertas por palavra-chave** — casamento por regex com plural tolerante (`\bkw(s?)\b`)
-- **Rota WhatsApp opcional** — keyword marcada vai para Telegram **e** WhatsApp, com menção nativa
-- **Busca retroativa (`/buscar`)** — varredura dos últimos 7 dias em todos os grupos, limitada a 30 resultados contra FloodWait
-- **Deduplicação em duas camadas** — hash exato (título+descrição+URL normalizados) e similaridade fuzzy (thefuzz, threshold 80%)
-- **Persistência temporal** — registro de ofertas enviadas expira em 48h
-- **Auditoria** — ofertas puladas registradas em `logs/Logs.txt` com timestamp e motivo
-- **Watchdog** — mata o processo se ficar sem atividade; o Docker o reinicia
-- **Arquitetura modular** — handlers separados, serviços dedicados, sem monólito
-- **179 testes unitários** — pytest, cobrindo serviços, handlers, catch-up, deduplicação, watchdog, envio WhatsApp e destinos em DM
+- **Monitoramento contínuo 24h**  -  escuta passiva via MTProto em todos os grupos cadastrados
+- **Catch-up de segurança**  -  relê o topo dos grupos monitorados em rodízio (1 grupo/s) e recupera o que o push do Telegram atrasou ou perdeu: o servidor corta a fila de updates de canais movimentados e o Telethon só percebe no timeout interno de 15 min (uma oferta de BUG chegou 11 min atrasada por isso)
+- **Alerta de atraso**  -  oferta entregue com mais de 60s de atraso é logada como `WARNING` com o tempo exato
+- **Alertas por palavra-chave**  -  casamento por regex com plural tolerante (`\bkw(s?)\b`)
+- **Tags de promoção boa**  -  detecta ofertas urgentes (bug, corre, correeee, urgente...) mesmo sem keyword de produto; cada tag tem marca própria de envio pro WhatsApp (`/tags`)
+- **Rota WhatsApp opcional**  -  keyword marcada vai para Telegram **e** WhatsApp, com menção nativa
+- **Busca retroativa (`/buscar`)**  -  varredura dos últimos 7 dias em todos os grupos, limitada a 30 resultados contra FloodWait
+- **Deduplicação em duas camadas**  -  hash exato (título+descrição+URL normalizados) e similaridade fuzzy (thefuzz, threshold 80%)
+- **Persistência temporal**  -  registro de ofertas enviadas expira em 48h
+- **Auditoria**  -  ofertas puladas registradas em `logs/Logs.txt` com timestamp e motivo
+- **Watchdog**  -  mata o processo se ficar sem atividade; o Docker o reinicia
+- **Arquitetura modular**  -  handlers separados, serviços dedicados, sem monólito
+- **179 testes unitários**  -  pytest, cobrindo serviços, handlers, catch-up, deduplicação, watchdog, envio WhatsApp e destinos em DM
 
 ---
 
@@ -126,13 +127,13 @@ Camada de persistência. `load_data` cria o `data.json` com estado padrão na pr
 Registra e processa os comandos do grupo de controle. O `add` de alerta anexa uma dica de como ligar o envio WhatsApp; `/alertas wa` liga/desliga a marca de uma keyword.
 
 ### `app/handlers/message_handler.py`
-Filtra mensagens dos grupos monitorados, casa **todas** as keywords de alerta presentes na mensagem e encaminha para o Telegram (o aviso lista cada keyword que bateu). Se **qualquer uma** delas estiver marcada como prioritária, também dispara o envio para o WhatsApp (falha na ponte não interrompe o fluxo do Telegram). Cada evento roda em task própria (`dispatch`) — o Telethon aguarda o handler antes de entregar a próxima mensagem, então um envio lento aqui travaria a recepção de todos os grupos. O POST na ponte sai por `asyncio.to_thread` (é HTTP síncrono) e o par checagem+registro da deduplicação fica sob `asyncio.Lock` (duas entregas simultâneas da mesma oferta não podem passar as duas). Oferta com mais de 60s de atraso gera `WARNING` com o tempo.
+Filtra mensagens dos grupos monitorados, casa **todas** as keywords de alerta presentes na mensagem e encaminha para o Telegram (o aviso lista cada keyword que bateu). Se **qualquer uma** delas estiver marcada como prioritária, também dispara o envio para o WhatsApp (falha na ponte não interrompe o fluxo do Telegram). Cada evento roda em task própria (`dispatch`)  -  o Telethon aguarda o handler antes de entregar a próxima mensagem, então um envio lento aqui travaria a recepção de todos os grupos. O POST na ponte sai por `asyncio.to_thread` (é HTTP síncrono) e o par checagem+registro da deduplicação fica sob `asyncio.Lock` (duas entregas simultâneas da mesma oferta não podem passar as duas). Oferta com mais de 60s de atraso gera `WARNING` com o tempo.
 
 ### `app/services/catchup_poller.py`
-Varredura de segurança contra atraso de push. O Telegram corta a fila de updates de canais movimentados (`channelTooLong`) e o Telethon só busca o que faltou no timeout interno de 15 min (`NO_UPDATES_TIMEOUT`) — em 10/11/2026 uma oferta de BUG das 17:20 foi entregue às 17:31 por isso. O poller relê o topo de cada grupo monitorado em rodízio (1 requisição/s, volta completa em ~53s com 53 grupos), mantém um cursor por grupo e processa o que for mais novo pelo mesmo `MessageHandler`, que evita repetir o que o push já tratou.
+Varredura de segurança contra atraso de push. O Telegram corta a fila de updates de canais movimentados (`channelTooLong`) e o Telethon só busca o que faltou no timeout interno de 15 min (`NO_UPDATES_TIMEOUT`)  -  em 10/11/2026 uma oferta de BUG das 17:20 foi entregue às 17:31 por isso. O poller relê o topo de cada grupo monitorado em rodízio (1 requisição/s, volta completa em ~53s com 53 grupos), mantém um cursor por grupo e processa o que for mais novo pelo mesmo `MessageHandler`, que evita repetir o que o push já tratou.
 
 ### `app/handlers/callback_handler.py`
-Vazio, reservado. Foi ocupado por botões inline de confirmação WhatsApp, mas o Telegram descarta o `reply_markup` quando o remetente é conta pessoal (userbot MTProto) — só contas Bot API podem enviar inline keyboards. A alternativa adotada é `/alertas wa <palavra>`.
+Vazio, reservado. Foi ocupado por botões inline de confirmação WhatsApp, mas o Telegram descarta o `reply_markup` quando o remetente é conta pessoal (userbot MTProto)  -  só contas Bot API podem enviar inline keyboards. A alternativa adotada é `/alertas wa <palavra>`.
 
 ### `app/services/offer_service.py`
 Núcleo da lógica de negócio: CRUD de grupos e alertas, flags de prioridade WhatsApp, busca retroativa de 7 dias e formatação das mensagens. Delega deduplicação ao `OfferDeduplicator`.
@@ -141,7 +142,7 @@ Núcleo da lógica de negócio: CRUD de grupos e alertas, flags de prioridade Wh
 Gera hash a partir de título + descrição + URL normalizados. Detecta duplicatas por hash exato ou similaridade fuzzy (threshold 80%). Mantém o registro por 48h e loga ofertas puladas.
 
 ### `app/services/whatsapp_sender.py`
-Único módulo que conhece a API da ponte do WhatsApp. Monta o texto da oferta (com o handle de menção no corpo — obrigatório para a menção renderizar) e faz o POST `/send` com o campo `mentions`.
+Único módulo que conhece a API da ponte do WhatsApp. Monta o texto da oferta (com o handle de menção no corpo  -  obrigatório para a menção renderizar) e faz o POST `/send` com o campo `mentions`.
 
 ### `tests/`
 179 testes unitários: `offer_service` (37), `whatsapp_destinos` (32), `command_handler` (31), `deduplication` (17), `whatsapp_sender` (12), `message_dispatch` (11), `message_whatsapp` (9), `catchup_poller` (9), `watchdog` (8), `whatsapp_flag` (8), `storage_backup` (5).
@@ -165,7 +166,7 @@ Gera hash a partir de título + descrição + URL normalizados. Detecta duplicat
 ```
 
 Se o push não entregar (gap de updates), a varredura de catch-up relê o grupo
-em até ~1 min e aplica os passos 6–8 para a mensagem perdida.
+em até ~1 min e aplica os passos 6 - 8 para a mensagem perdida.
 
 ---
 
@@ -181,7 +182,7 @@ em até ~1 min e aplica os passos 6–8 para a mensagem perdida.
 | Ruff            | latest   | Linting e análise estática                  |
 | Docker          | compose  | Empacotamento e execução contínua           |
 
-`pytest` e `ruff` são dependências de desenvolvimento — não estão no `requirements.txt` (que contém apenas o runtime).
+`pytest` e `ruff` são dependências de desenvolvimento  -  não estão no `requirements.txt` (que contém apenas o runtime).
 
 ---
 
@@ -202,7 +203,9 @@ Definidas em `.env` (não versionado; `!.env.example` é o template).
 | `CATCHUP_LIMIT`             | Não | Mensagens relidas por grupo em cada passagem (padrão 20)   |
 | `CATCHUP_PRIME_DELAY`       | Não | Segundos antes da primeira varredura, para o client conectar (padrão 60) |
 
-Para a rota WhatsApp, o `whatsapp_sender` aceita override por env (`WHATSAPP_BRIDGE_URL`, `WHATSAPP_GROUP_ID`, `WHATSAPP_MENTION_JID`, `WHATSAPP_BRIDGE_TIMEOUT`); os valores padrão já apontam para a ponte local e o grupo do Sol.
+Para a rota WhatsApp, o `whatsapp_sender` aceita override por env (`WHATSAPP_BRIDGE_URL`, `WHATSAPP_GROUP_ID`, `WHATSAPP_MENTION_JID`, `WHATSAPP_BRIDGE_TIMEOUT`, `WHATSAPP_BRIDGE_TOKEN`, `WHATSAPP_BRIDGE_TOKEN_FILE`); os valores padrão já apontam para a ponte local e o grupo do Sol.
+
+**O bearer da ponte é obrigatório** (`Authorization: Bearer`) e o bridge rotaciona o segredo a cada restart. O bot lê o token de `WHATSAPP_BRIDGE_TOKEN_FILE` (padrão `/hermes-wa/.bridge-token`) a cada envio; o compose monta `~/.hermes/whatsapp/session` em `/hermes-wa` só-leitura. Sem esse mount (ou com o token velho) todo envio responde `401 Unauthorized`  -  foi o que deixou o WhatsApp mudo entre 19 e 23/11/2026 enquanto o Telegram seguia normal.
 
 ---
 
@@ -242,7 +245,7 @@ python -m app.main
 
 O terminal pede telefone (com DDI e DDD), código de verificação e senha 2FA se configurada. A sessão fica salva em `data/`.
 
-> A ponte do WhatsApp não é necessária para o funcionamento base — sem ela, o bot opera apenas no Telegram.
+> A ponte do WhatsApp não é necessária para o funcionamento base  -  sem ela, o bot opera apenas no Telegram.
 
 ---
 
@@ -262,7 +265,7 @@ cd botOfertas && docker compose up -d --build
 
 ### `network_mode: host` é obrigatório para a rota WhatsApp
 
-A ponte do WhatsApp escuta em `127.0.0.1:3001` (somente localhost). Um container em rede bridge não a alcança. Por isso o serviço declara `network_mode: host` — o bot apenas faz conexões de saída, não expõe portas, então o ganho de superfície é nulo e a integração passa a funcionar.
+A ponte do WhatsApp escuta em `127.0.0.1:3001` (somente localhost). Um container em rede bridge não a alcança. Por isso o serviço declara `network_mode: host`  -  o bot apenas faz conexões de saída, não expõe portas, então o ganho de superfície é nulo e a integração passa a funcionar.
 
 Sem esse modo, o bot continua funcionando normalmente no Telegram; apenas a rota WhatsApp falha (e falha como "extra": loga e segue).
 
@@ -311,6 +314,7 @@ Todos os comandos rodam no **Grupo de Controle** (configurado via `FORWARD_TO`).
 | `/alertas add`     | Adiciona keyword; sugere o comando de envio WhatsApp       | `/alertas add teclado` |
 | `/alertas rm`      | Remove keyword (limpa a flag WhatsApp junto)               | `/alertas rm teclado`  |
 | `/alertas wa`      | Liga/desliga o envio WhatsApp de uma keyword               | `/alertas wa teclado`  |
+| `/tags`            | Gerencia tags de promoção boa (bug, corre, urgente...)     | `/tags add bug, corre` |
 | `/wa`              | Lista os destinos extras (DM) e o que cada um recebe       | `/wa`                  |
 | `/wa add`          | Cadastra um número para receber em DM (DDI+DDD+número)     | `/wa add Amigo 5551999999999` |
 | `/wa kw`           | Define quais keywords o destino recebe (vazio = desliga)   | `/wa kw Amigo orfeu, bug` |
@@ -335,18 +339,18 @@ Depois de `/alertas add teclado`, o bot responde com a dica:
 
 `/alertas wa teclado` alterna a marca a qualquer momento. Sem marca, o comportamento é o padrão: só Telegram.
 
-> **Por que não há botão?** Botões inline exigem conta Bot API. O bot é userbot (conta pessoal via MTProto), e o Telegram remove o `reply_markup` de contas de usuário — validado ao vivo, não é configuração que mude.
+> **Por que não há botão?** Botões inline exigem conta Bot API. O bot é userbot (conta pessoal via MTProto), e o Telegram remove o `reply_markup` de contas de usuário  -  validado ao vivo, não é configuração que mude.
 
 ### Como a entrega funciona
 
 O `message_handler`, ao encaminhar uma oferta de keyword marcada, chama o `whatsapp_sender`, que monta o texto (mensagem original + origem + data) e faz `POST /send` na ponte do WhatsApp, com o campo `mentions`.
 
-**Detalhe crítico de implementação:** o campo `mentions` sozinho não gera a menção. O WhatsApp/Baileys só renderiza (e notifica) quando o handle `@numero` aparece **no corpo do texto**. O `whatsapp_sender` injeta esse handle na primeira linha. Um `success: true` da ponte não prova que a menção formou — a verificação é visual.
+**Detalhe crítico de implementação:** o campo `mentions` sozinho não gera a menção. O WhatsApp/Baileys só renderiza (e notifica) quando o handle `@numero` aparece **no corpo do texto**. O `whatsapp_sender` injeta esse handle na primeira linha. Um `success: true` da ponte não prova que a menção formou  -  a verificação é visual.
 
 ### Destinos extras em conversa individual (`/wa`)
 
 Além do grupo com menção, números avulsos podem receber a oferta em **DM**, cada um
-com seu próprio recorte de keywords — quem só pediu desconto de café não recebe
+com seu próprio recorte de keywords  -  quem só pediu desconto de café não recebe
 alerta de bug de notebook.
 
 ```
@@ -358,12 +362,12 @@ alerta de bug de notebook.
 
 Regras que o módulo (`app/services/whatsapp_destinos.py`) garante:
 
-- **Só conversa individual.** O JID é normalizado para `<ddi><ddd><numero>@s.whatsapp.net`; grupo (`@g.us`) e LID são recusados. A ponte não valida destino — JID malformado voltaria `success: true` e a mensagem nunca chegaria, então a validação acontece antes do envio.
-- **Nono dígito não é inferido.** Número com 8 dígitos após o DDD é enviado exatamente como foi digitado (`+55 51 9469-4630` → `555194694630`). "Completar" o 9 gera um JID que a ponte aceita com `success: true` e o WhatsApp descarta — foi o que quebrou o primeiro cadastro real em 11/11/2026. O log registra a suspeita, a decisão é de quem cadastra.
+- **Só conversa individual.** O JID é normalizado para `<ddi><ddd><numero>@s.whatsapp.net`; grupo (`@g.us`) e LID são recusados. A ponte não valida destino  -  JID malformado voltaria `success: true` e a mensagem nunca chegaria, então a validação acontece antes do envio.
+- **Nono dígito não é inferido.** Número com 8 dígitos após o DDD é enviado exatamente como foi digitado (`+55 51 9469-4630` → `555194694630`). "Completar" o 9 gera um JID que a ponte aceita com `success: true` e o WhatsApp descarta  -  foi o que quebrou o primeiro cadastro real em 11/11/2026. O log registra a suspeita, a decisão é de quem cadastra.
 - **Gatilho independente.** A DM sai mesmo com a keyword **fora** de `/alertas wa`: o grupo do dono continua recebendo só o que está marcado, mas o destino recebe tudo que estiver no recorte dele. Oferta que bate keyword marcada **e** keyword de destino vai para os dois.
 - **Recorte por keyword.** Destino só entra quando a oferta bate uma keyword do recorte dele; uma oferta que bate duas keywords do mesmo destino sai uma vez só.
 - **Sem menção no DM.** Em conversa individual não existe menção nativa: o `@numero` apareceria como texto solto, então o texto sai sem ele (só "🔔 Nova oferta").
-- **Falha isolada.** Um destino que falha não impede os outros nem altera o resultado do grupo — o envio pro WhatsApp continua sendo um extra.
+- **Falha isolada.** Um destino que falha não impede os outros nem altera o resultado do grupo  -  o envio pro WhatsApp continua sendo um extra.
 
 > **Número desconhecido não avisa.** Se o destinatário não tiver WhatsApp ou não tiver o número do Sol salvo, a entrega pode cair em filtro/solicitação sem notificação. O primeiro envio deve ser confirmado com a pessoa (pedir para salvar o contato resolve).
 
@@ -380,7 +384,7 @@ O registro completo (contexto, alternativas descartadas, consequências) está e
 ## Persistência
 
 - **Estado** (`data/data.json`): grupos monitorados, alertas, flags WhatsApp e destinos extras de WhatsApp (DM)
-- **Backup automático**: `save_data` grava `data.json.bak-<timestamp>` antes de cada escrita, mantendo os 10 mais recentes (`BACKUP_KEEP`) — blindagem contra sobrescrita acidental
+- **Backup automático**: `save_data` grava `data.json.bak-<timestamp>` antes de cada escrita, mantendo os 10 mais recentes (`BACKUP_KEEP`)  -  blindagem contra sobrescrita acidental
 - **Registro de ofertas** (`data/offers_sent.json`): hash das ofertas enviadas, expira em 48h
 - **Sessão** (`data/*.session`): credencial Telethon persistida após o primeiro login
 - **Encoding**: UTF-8 explícito em todas as operações de I/O
@@ -391,10 +395,10 @@ O registro completo (contexto, alternativas descartadas, consequências) está e
 ## Segurança e Privacidade
 
 - **Credenciais** em `.env`, fora do versionamento (`.env.example` é o único commitado)
-- **Sessão** `.session` também gitignored — quem tiver acesso a ele tem acesso à conta
+- **Sessão** `.session` também gitignored  -  quem tiver acesso a ele tem acesso à conta
 - **Vinculação à conta pessoal**: é um userbot. Se um grupo banir sua conta, o bot perde acesso às ofertas daquele grupo
 - **2FA suportada**: pedida no primeiro login se configurada na conta
-- **Ponte do WhatsApp** roda no host e escuta apenas em `localhost` — não é exposta
+- **Ponte do WhatsApp** roda no host e escuta apenas em `localhost`  -  não é exposta
 
 ---
 
@@ -410,9 +414,9 @@ O registro completo (contexto, alternativas descartadas, consequências) está e
 - Confira `logs/Logs.txt` (ofertas puladas por dedup também aparecem lá)
 
 **Oferta chega no Telegram mas não no WhatsApp**
-- A keyword pode não estar marcada — verifique com `/alertas wa <kw>`
+- A keyword pode não estar marcada  -  verifique com `/alertas wa <kw>`
 - A ponte do WhatsApp pode estar fora: `curl http://127.0.0.1:3001/health` deve retornar `connected`
-- Se o container estiver em rede bridge, a ponte é inalcançável — `network_mode: host` é obrigatório
+- Se o container estiver em rede bridge, a ponte é inalcançável  -  `network_mode: host` é obrigatório
 
 **Mensagem chega no WhatsApp sem notificação**
 - A menção não formou. O handle `@numero` precisa estar no texto (o `whatsapp_sender` faz isso automaticamente); se você customizou o texto, mantenha o handle
@@ -424,14 +428,14 @@ O registro completo (contexto, alternativas descartadas, consequências) está e
 
 ## Decisões Técnicas
 
-- **Telethon sobre python-telegram-bot**: A API MTProto permite ler mensagens de qualquer grupo — a Bot API não oferece isso
+- **Telethon sobre python-telegram-bot**: A API MTProto permite ler mensagens de qualquer grupo  -  a Bot API não oferece isso
 - **Persistência JSON**: Sem dependência de banco externo; o volume de dados é pequeno e o acesso é simples
 - **Entrega WhatsApp direta na ponte**: Evita custo de LLM por alerta e latência de um agente; a menção nativa exige o campo `mentions` + handle no texto, que o webhook `deliver_only` do Hermes não envia
 - **`network_mode: host`**: Requerido para alcançar a ponte em localhost; o bot só faz saída, então não abre superfície
-- **Falha do WhatsApp é não-bloqueante**: A rota WhatsApp é um extra — o Telegram é o destino garantido
+- **Falha do WhatsApp é não-bloqueante**: A rota WhatsApp é um extra  -  o Telegram é o destino garantido
 - **Watchdog + `restart: unless-stopped`**: Em vez de supervisionar a conexão, mata o processo travado e deixa o Docker religar
 - **Limite de 30 em `/buscar`**: Proteção contra FloodWait (anti-spam do Telegram)
-- **Marcação por keyword, não por oferta**: Configura uma vez e vale para todas as ofertas daquela keyword — mais prático que marcar oferta a oferta
+- **Marcação por keyword, não por oferta**: Configura uma vez e vale para todas as ofertas daquela keyword  -  mais prático que marcar oferta a oferta
 
 ---
 

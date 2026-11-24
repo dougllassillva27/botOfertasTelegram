@@ -1,5 +1,5 @@
 """
-Serviço de ofertas — lógica de negócio para busca, cadastro e gerenciamento.
+Serviço de ofertas  -  lógica de negócio para busca, cadastro e gerenciamento.
 """
 
 import re
@@ -257,6 +257,157 @@ class OfferService:
         if not self.state["alertas"]:
             return "Nenhum alerta ativo no momento."
         return "\n".join([f"• `{a}`" for a in self.state["alertas"]])
+
+    # ------------------------------------------------------------------
+    # Promo tags (tags de urgência / promoção boa)
+    # ------------------------------------------------------------------
+    _VOGAIS = set("aeiouáéíóúâêîôûãõàèìòù")
+
+    @staticmethod
+    def _normalize_promo_tag(tag):
+        return str(tag or "").lower().strip()
+
+    @staticmethod
+    def _promo_tag_pattern(tag):
+        tag = str(tag or "").lower().strip()
+        if not tag:
+            return None
+        words = tag.split()
+        if len(words) > 1:
+            escaped = [re.escape(w) for w in words]
+            return re.compile(
+                r"\b" + r"\s+".join(escaped) + r"\b", re.IGNORECASE
+            )
+        last = tag[-1]
+        if last in OfferService._VOGAIS:
+            base = re.escape(tag[:-1])
+            return re.compile(
+                r"\b" + base + re.escape(last) + r"+s?\b", re.IGNORECASE
+            )
+        return re.compile(r"\b" + re.escape(tag) + r"s?\b", re.IGNORECASE)
+
+    def _get_promo_tags(self):
+        return self.state.setdefault("promo_tags", [])
+
+    def _get_promo_tags_whatsapp_flags(self):
+        return self.state.setdefault("promo_tags_whatsapp", [])
+
+    def add_promo_tag(self, tag):
+        tg = self._normalize_promo_tag(tag)
+        if not tg:
+            return False, "⚠️ Tag inválida."
+        tags = self._get_promo_tags()
+        if tg not in tags:
+            tags.append(tg)
+            save_data(self.state)
+            return True, f"✅ Tag de promoção `{tg}` adicionada."
+        return False, f"⚠️ Tag `{tg}` já está na lista."
+
+    def remove_promo_tag(self, tag):
+        tg = self._normalize_promo_tag(tag)
+        tags = self._get_promo_tags()
+        if tg in tags:
+            tags.remove(tg)
+            flags = self._get_promo_tags_whatsapp_flags()
+            if tg in flags:
+                flags.remove(tg)
+            save_data(self.state)
+            return True, f"🗑️ Tag de promoção `{tg}` removida."
+        return False, f"⚠️ Tag `{tg}` não encontrada."
+
+    def add_promo_tags(self, tags):
+        results = []
+        changed = False
+        for raw in tags or []:
+            tg = self._normalize_promo_tag(raw)
+            if not tg:
+                continue
+            lst = self._get_promo_tags()
+            if tg not in lst:
+                lst.append(tg)
+                changed = True
+                results.append((tg, True, "adicionada com sucesso"))
+            else:
+                results.append((tg, False, "já está na lista"))
+        if changed:
+            save_data(self.state)
+        return results, changed
+
+    def remove_promo_tags(self, tags):
+        results = []
+        changed = False
+        for raw in tags or []:
+            tg = self._normalize_promo_tag(raw)
+            lst = self._get_promo_tags()
+            if tg in lst:
+                lst.remove(tg)
+                flags = self._get_promo_tags_whatsapp_flags()
+                if tg in flags:
+                    flags.remove(tg)
+                changed = True
+                results.append((tg, True, "removida"))
+            else:
+                results.append((tg, False, "não encontrada"))
+        if changed:
+            save_data(self.state)
+        return results, changed
+
+    def get_promo_tags_list(self):
+        tags = self._get_promo_tags()
+        if not tags:
+            return "Nenhuma tag de promoção ativa no momento."
+        return "\n".join([f"• `{t}`" for t in tags])
+
+    def has_promo_tag_whatsapp_flag(self, tag):
+        tg = self._normalize_promo_tag(tag)
+        return tg in self._get_promo_tags_whatsapp_flags()
+
+    def set_promo_tag_whatsapp_flag(self, tag, enabled=True):
+        tg = self._normalize_promo_tag(tag)
+        tags = self._get_promo_tags()
+        if tg not in tags:
+            return False, (
+                f"⚠️ Tag `{tg}` não encontrada\n\n"
+                f"🔔 Cadastre primeiro: `/tags add {tg}`"
+            )
+        flags = self._get_promo_tags_whatsapp_flags()
+        if enabled:
+            if tg in flags:
+                return False, (
+                    f"⚠️ `{tg}` **já vai pro WhatsApp** 📲\n\n"
+                    f"🔕 Pra desligar: `/tags wa {tg}`"
+                )
+            flags.append(tg)
+            save_data(self.state)
+            return True, (
+                f"✅ `{tg}` **agora também vai pro WhatsApp** 📲\n\n"
+                "📩 Entrega no grupo Sol ☀️ com menção no Douglas\n"
+                f"🔕 Pra desligar: `/tags wa {tg}`"
+            )
+        if tg not in flags:
+            return False, (
+                f"⚠️ `{tg}` **não estava indo pro WhatsApp**\n\n"
+                f"📲 Pra ligar: `/tags wa {tg}`"
+            )
+        flags.remove(tg)
+        save_data(self.state)
+        return True, (
+            f"🔕 `{tg}` **voltou a ir só pro Telegram**\n\n"
+            f"📲 Pra ligar de novo: `/tags wa {tg}`"
+        )
+
+    def check_promo_tag_matches(self, message_text):
+        if not message_text:
+            return []
+        matches = []
+        for tag in self._get_promo_tags():
+            pat = self._promo_tag_pattern(tag)
+            if pat is None:
+                continue
+            if pat.search(message_text):
+                if tag not in matches:
+                    matches.append(tag)
+        return matches
 
     def check_keyword_matches(self, message_text):
         """Retorna TODAS as keywords monitoradas presentes na mensagem.

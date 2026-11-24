@@ -327,3 +327,65 @@ class TestOfferServiceFormatMessage:
 
         # UTC 14:30 - 3h = 11:30
         assert "11:30" in result
+
+
+class TestPromoTags:
+    """Tags de urgência/promoção boa."""
+
+    def test_add_and_list(self, offer_service):
+        ok, msg = offer_service.add_promo_tag("bug")
+        assert ok is True
+        assert "bug" in offer_service.state["promo_tags"]
+        assert "Tag de promoção" in msg
+
+    def test_add_duplicate(self, offer_service):
+        offer_service.add_promo_tag("bug")
+        ok, msg = offer_service.add_promo_tag("bug")
+        assert ok is False
+        assert "já está" in msg
+
+    def test_remove(self, offer_service):
+        offer_service.add_promo_tag("bug")
+        ok, msg = offer_service.remove_promo_tag("bug")
+        assert ok is True
+        assert "bug" not in offer_service.state["promo_tags"]
+
+    def test_remove_not_found(self, offer_service):
+        ok, msg = offer_service.remove_promo_tag("inexistente")
+        assert ok is False
+
+    def test_pattern_variantes_corre(self, offer_service):
+        offer_service.add_promo_tag("corre")
+        for texto in ["CORREEEE oferta", "corree hoje", "corre agora"]:
+            assert offer_service.check_promo_tag_matches(texto) == ["corre"], texto
+
+    def test_pattern_plural_bug(self, offer_service):
+        offer_service.add_promo_tag("bug")
+        assert offer_service.check_promo_tag_matches("tem bug hoje") == ["bug"]
+        assert offer_service.check_promo_tag_matches("tem bugs hoje") == ["bug"]
+
+    def test_no_match(self, offer_service):
+        offer_service.add_promo_tag("bug")
+        assert offer_service.check_promo_tag_matches("panela de pressão") == []
+
+    def test_empty_message(self, offer_service):
+        offer_service.add_promo_tag("bug")
+        assert offer_service.check_promo_tag_matches("") == []
+        assert offer_service.check_promo_tag_matches(None) == []
+
+    def test_whatsapp_flag_toggle(self, offer_service):
+        offer_service.add_promo_tag("bug")
+        ok, _ = offer_service.set_promo_tag_whatsapp_flag("bug", True)
+        assert ok is True
+        assert offer_service.has_promo_tag_whatsapp_flag("bug") is True
+        ok, _ = offer_service.set_promo_tag_whatsapp_flag("bug", False)
+        assert ok is True
+        assert offer_service.has_promo_tag_whatsapp_flag("bug") is False
+
+    def test_bulk_add(self, offer_service):
+        import unittest.mock
+        with unittest.mock.patch("app.services.offer_service.save_data"):
+            results, changed = offer_service.add_promo_tags(["bug", "corre", "bug"])
+        assert changed is True
+        assert "bug" in offer_service.state["promo_tags"]
+        assert "corre" in offer_service.state["promo_tags"]

@@ -179,3 +179,19 @@ class TestSeenIds:
         assert len(handler._seen_set) == SEEN_IDS_MAX
         assert not handler.was_processed("-100123", 0)
         assert handler.was_processed("-100123", SEEN_IDS_MAX + 9)
+
+
+class TestPromoTagFlow:
+    def test_promo_tag_alone_forwards(self, handler, offer_service):
+        offer_service.state["promo_tags"] = ["bug"]
+        offer_service.deduplicator.is_duplicate.return_value = (False, None, None)
+        event = _make_event("Notebook por R$ 999 bug")
+        asyncio.run(handler.handle_message(event))
+        event.message.forward_to.assert_awaited()
+
+    def test_promo_tag_alone_no_keyword_skips_dedup_check_false(self, handler, offer_service):
+        # sem keyword de produto nem tag: não encaminha
+        offer_service.state["promo_tags"] = ["bug"]
+        event = _make_event("Panela de pressão 4,5L por R$ 99")
+        asyncio.run(handler.handle_message(event))
+        event.message.forward_to.assert_not_awaited()

@@ -1,11 +1,11 @@
 """
-Handler de mensagens — monitora grupos e encaminha ofertas com alertas.
+Handler de mensagens  -  monitora grupos e encaminha ofertas com alertas.
 
 Duas fontes de mensagem chegam aqui:
 
 1. Push do Telethon (`handle_message`), o caminho normal;
 2. Varredura de segurança (`CatchupPoller`), que relê o topo dos grupos e
-   entrega o que o push não entregou (gap de updates) — chama
+   entrega o que o push não entregou (gap de updates)  -  chama
    `process_message` direto.
 
 O processamento roda em task própria (`dispatch`): o Telethon espera o
@@ -102,7 +102,8 @@ class MessageHandler:
         # Keyword primeiro: a checagem de duplicidade usa comparação fuzzy e é
         # a parte cara do fluxo. Só faz sentido para mensagem que iria adiante.
         matched_keywords = self.offer_service.check_keyword_matches(message_text)
-        if not matched_keywords:
+        matched_promo_tags = self.offer_service.check_promo_tag_matches(message_text)
+        if not matched_keywords and not matched_promo_tags:
             return
 
         title, description, url = self.offer_service.extract_offer_info(message_text)
@@ -122,18 +123,20 @@ class MessageHandler:
         if lag is not None and lag > LAG_WARN_SECONDS:
             logger.warning(
                 f"Oferta atrasada em {int(lag)}s (publicada {self._fmt_date(message.date)})"
-                f" — entregue por catch-up, não por push"
+                f"  -  entregue por catch-up, não por push"
             )
 
         chat_title = getattr(chat, "title", "Desconhecido")
+        all_matches = list(matched_keywords) + [
+            t for t in matched_promo_tags if t not in matched_keywords
+        ]
         logger.info(
-            f"Keyword(s) {matched_keywords} found in chat '{chat_title}'!"
-            " Forwarding..."
+            f"Keyword(s) {all_matches} found in chat '{chat_title}'! Forwarding..."
         )
 
         fw_msg = await message.forward_to(self.offer_service.state["forward_to"])
 
-        alert_label = ", ".join(f"`{kw}`" for kw in matched_keywords)
+        alert_label = ", ".join(f"`{m}`" for m in all_matches)
         await self.client.send_message(
             self.offer_service.state["forward_to"],
             f"🔔 **Alerta:** {alert_label}\n"
@@ -148,7 +151,10 @@ class MessageHandler:
         #     em DM que incluam a keyword;
         #   - keyword fora das marcas, mas no recorte de algum destino → só a DM
         #     (o grupo do dono não recebe o que ele não pediu).
-        flagged = [kw for kw in matched_keywords if self.offer_service.has_whatsapp_flag(kw)]
+        flagged = [kw for kw in matched_keywords if self.offer_service.has_whatsapp_flag(kw)] + [
+            t for t in matched_promo_tags
+            if self.offer_service.has_promo_tag_whatsapp_flag(t)
+        ]
         destinos = destinos_for(self.offer_service.state, matched_keywords)
         if flagged or destinos:
             logger.info(

@@ -1,5 +1,5 @@
 """
-Handler de comandos — /comandos, /buscar, /grupos, /alertas.
+Handler de comandos  -  /comandos, /buscar, /grupos, /alertas.
 """
 
 import asyncio
@@ -48,7 +48,7 @@ class CommandHandler:
         - `entidade`/`verbo` dão o título no singular ("Alerta adicionado") ou
           no plural ("2 alertas adicionados")
         - `total` + `rotulo_total` fecham com o estado atual ("📊 14 alertas
-          ativos") — quem executa o comando sai sabendo onde parou
+          ativos")  -  quem executa o comando sai sabendo onde parou
         - itens que não mudaram vêm com o motivo, um por linha
         """
         ok_items = [item for item, ok, _ in results if ok]
@@ -81,6 +81,7 @@ class CommandHandler:
         self._register_buscar(forward_to)
         self._register_grupos(forward_to)
         self._register_alertas(forward_to)
+        self._register_tags(forward_to)
         self._register_wa(forward_to)
 
     @staticmethod
@@ -100,8 +101,102 @@ class CommandHandler:
             " (liga/desliga a qualquer momento)"
         )
 
+    def _register_tags(self, forward_to):
+        """Comandos `/tags`  -  tags de urgência/promoção boa, com marca WhatsApp."""
+
+        @self.client.on(events.NewMessage(chats=forward_to, pattern=r"(?i)^/tags(.*)"))
+        async def handle_tags(event):
+            args_text = event.pattern_match.group(1).strip()
+            args = args_text.split() if args_text else []
+            state = self.offer_service.state
+
+            if not args or args[0].lower() in ("", "list"):
+                tags_list = self.offer_service.get_promo_tags_list()
+                msg = (
+                    f"🏷️ **Tags de promoção ({len(self.offer_service._get_promo_tags())})**\n\n"
+                    f"{tags_list}\n\n"
+                    "⚙️ **Como gerenciar**\n"
+                    "➕ `/tags add bug, corre, urgente`\n"
+                    "➖ `/tags rm bug`\n"
+                    "📲 `/tags wa bug`  -  liga/desliga o envio pro WhatsApp\n\n"
+                    "💡 Uma tag dispara o encaminhamento mesmo sem keyword de produto.\n"
+                    "🔁 Variantes são toleradas (corre, corree, correeee)."
+                )
+                await event.respond(msg)
+                raise events.StopPropagation
+
+            cmd = args[0].lower()
+            item = " ".join(args[1:])
+            items = self.parse_bulk_items(item)
+
+            if cmd == "add":
+                if not items:
+                    await event.respond(
+                        "⚠️ **Uso correto:** `/tags add bug, corre, urgente`"
+                    )
+                else:
+                    results, _ = self.offer_service.add_promo_tags(items)
+                    await event.respond(
+                        self.format_bulk_response(
+                            results,
+                            entidade="tag",
+                            verbo="adicionada",
+                            total=len(self.offer_service._get_promo_tags()),
+                            rotulo_total="tags de promoção",
+                        )
+                        + self._tags_whatsapp_hint(results)
+                    )
+            elif cmd == "wa":
+                if not items:
+                    await event.respond(
+                        "⚠️ **Uso correto:** `/tags wa bug`\n"
+                        "Liga/desliga o envio pro WhatsApp daquela tag."
+                    )
+                else:
+                    for tg in items:
+                        current = self.offer_service.has_promo_tag_whatsapp_flag(tg)
+                        _, msg = self.offer_service.set_promo_tag_whatsapp_flag(
+                            tg, not current
+                        )
+                        await event.respond(msg)
+            elif cmd in ("rm", "del", "remove"):
+                if not items:
+                    await event.respond("⚠️ **Uso correto:** `/tags rm bug`")
+                else:
+                    results, _ = self.offer_service.remove_promo_tags(items)
+                    await event.respond(
+                        self.format_bulk_response(
+                            results,
+                            entidade="tag",
+                            verbo="removida",
+                            total=len(self.offer_service._get_promo_tags()),
+                            rotulo_total="tags de promoção",
+                        )
+                    )
+            else:
+                await event.respond(
+                    "⚠️ **Comando não reconhecido.**\n\n"
+                    "📋 `/tags`  -  lista as tags\n"
+                    "➕ `/tags add bug, corre`\n"
+                    "➖ `/tags rm bug`\n"
+                    "📲 `/tags wa bug`"
+                )
+
+            raise events.StopPropagation
+
+    @staticmethod
+    def _tags_whatsapp_hint(results):
+        added = [item for item, ok, _ in results if ok]
+        if not added:
+            return ""
+        tg = added[0] if len(added) == 1 else "<tag>"
+        return (
+            "\n\n📲 **Pra enviar também no WhatsApp:** `/tags wa " + tg + "`"
+            " (liga/desliga a qualquer momento)"
+        )
+
     def _register_wa(self, forward_to):
-        """Comandos `/wa` — destinos extras em DM, com recorte de keywords."""
+        """Comandos `/wa`  -  destinos extras em DM, com recorte de keywords."""
 
         @self.client.on(events.NewMessage(chats=forward_to, pattern=r"(?i)^/wa(.*)"))
         async def handle_wa(event):
@@ -149,7 +244,7 @@ class CommandHandler:
 
             await event.respond(
                 "⚠️ **Comando não reconhecido.**\n\n"
-                "📋 `/wa` — lista os destinos\n"
+                "📋 `/wa`  -  lista os destinos\n"
                 "➕ `/wa add Amigo 5551999999999`\n"
                 "🔔 `/wa kw Amigo orfeu, bug`\n"
                 "➖ `/wa rm Amigo`"
@@ -182,12 +277,17 @@ class CommandHandler:
                 "Gerencia as palavras-chave monitoradas.\n"
                 "➕ `/alertas add teclado`\n"
                 "➖ `/alertas rm teclado`\n"
-                "📲 `/alertas wa teclado` — liga/desliga o envio pro WhatsApp\n"
+                "📲 `/alertas wa teclado`  -  liga/desliga o envio pro WhatsApp\n"
                 "💡 Em massa: `/alertas add iphone, caixa de som`\n\n"
+                "🏷️ `/tags`\n"
+                "Gerencia tags de promoção boa (bug, corre, urgente...).\n"
+                "➕ `/tags add bug, corre`\n"
+                "➖ `/tags rm bug`\n"
+                "📲 `/tags wa bug`  -  liga/desliga o envio pro WhatsApp\n\n"
                 "📤 `/wa`\n"
                 "Gerencia quem mais recebe as ofertas no WhatsApp (DM).\n"
                 "➕ `/wa add Amigo 5551999999999`\n"
-                "🔔 `/wa kw Amigo orfeu, bug` — o que ele recebe\n"
+                "🔔 `/wa kw Amigo orfeu, bug`  -  o que ele recebe\n"
                 "➖ `/wa rm Amigo`\n\n"
                 "ℹ️ `/getid`\n"
                 "Mostra o ID do chat atual para configurações."
@@ -320,7 +420,7 @@ class CommandHandler:
                     "⚙️ **Como gerenciar**\n"
                     "➕ `/alertas add palavra`\n"
                     "➖ `/alertas rm palavra`\n"
-                    "📲 `/alertas wa palavra` — vai pro WhatsApp também"
+                    "📲 `/alertas wa palavra`  -  vai pro WhatsApp também"
                 )
                 await event.respond(msg)
                 return
