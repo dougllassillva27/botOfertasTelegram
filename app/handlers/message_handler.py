@@ -103,7 +103,8 @@ class MessageHandler:
         # a parte cara do fluxo. Só faz sentido para mensagem que iria adiante.
         matched_keywords = self.offer_service.check_keyword_matches(message_text)
         matched_promo_tags = self.offer_service.check_promo_tag_matches(message_text)
-        if not matched_keywords and not matched_promo_tags:
+        price_good, price_reason = self.offer_service.check_price_good(message_text)
+        if not matched_keywords and not matched_promo_tags and not price_good:
             return
 
         title, description, url = self.offer_service.extract_offer_info(message_text)
@@ -130,6 +131,8 @@ class MessageHandler:
         all_matches = list(matched_keywords) + [
             t for t in matched_promo_tags if t not in matched_keywords
         ]
+        if price_good and price_reason and price_reason not in all_matches:
+            all_matches.append(price_reason)
         logger.info(
             f"Keyword(s) {all_matches} found in chat '{chat_title}'! Forwarding..."
         )
@@ -155,6 +158,8 @@ class MessageHandler:
             t for t in matched_promo_tags
             if self.offer_service.has_promo_tag_whatsapp_flag(t)
         ]
+        if price_good and self.offer_service.has_price_whatsapp_flag():
+            flagged.append("preco")
         destinos = destinos_for(self.offer_service.state, matched_keywords)
         if flagged or destinos:
             logger.info(

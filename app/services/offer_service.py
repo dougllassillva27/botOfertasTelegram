@@ -409,6 +409,65 @@ class OfferService:
                     matches.append(tag)
         return matches
 
+    # ------------------------------------------------------------------
+    # Regras de preço (valor bom)
+    # ------------------------------------------------------------------
+
+    def _get_price_rules(self):
+        rules = self.state.setdefault("price_rules", {})
+        rules.setdefault("discount_min", 60)
+        rules.setdefault("price_max", 20)
+        rules.setdefault("whatsapp", False)
+        return rules
+
+    def get_price_discount_min(self):
+        return self._get_price_rules()["discount_min"]
+
+    def get_price_max(self):
+        return self._get_price_rules()["price_max"]
+
+    def set_price_discount_min(self, value):
+        try:
+            v = int(value)
+        except (ValueError, TypeError):
+            return False, "⚠️ Valor inválido. Use número inteiro entre 1 e 100."
+        if v < 1 or v > 100:
+            return False, "⚠️ Threshold deve estar entre 1 e 100."
+        self._get_price_rules()["discount_min"] = v
+        save_data(self.state)
+        return True, "✅ Threshold de desconto ajustado para {}%.".format(v)
+
+    def set_price_max(self, value):
+        try:
+            v = int(value)
+        except (ValueError, TypeError):
+            return False, "⚠️ Valor inválido. Use número inteiro >= 1."
+        if v < 1:
+            return False, "⚠️ Teto deve ser >= 1."
+        self._get_price_rules()["price_max"] = v
+        save_data(self.state)
+        return True, "✅ Teto de preço ajustado para R$ {}.".format(v)
+
+    def has_price_whatsapp_flag(self):
+        return bool(self._get_price_rules().get("whatsapp", False))
+
+    def set_price_whatsapp_flag(self, enabled=True):
+        self._get_price_rules()["whatsapp"] = bool(enabled)
+        save_data(self.state)
+        if enabled:
+            return True, "✅ 'Preço bom' agora também vai pro WhatsApp 📲"
+        return True, "🔕 'Preço bom' voltou a ir só pro Telegram"
+
+    def check_price_good(self, message_text):
+        from app.services.price_parser import check_price_good as _check
+
+        rules = self._get_price_rules()
+        return _check(
+            message_text,
+            discount_min=rules["discount_min"],
+            price_max=rules["price_max"],
+        )
+
     def check_keyword_matches(self, message_text):
         """Retorna TODAS as keywords monitoradas presentes na mensagem.
 

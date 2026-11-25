@@ -82,6 +82,7 @@ class CommandHandler:
         self._register_grupos(forward_to)
         self._register_alertas(forward_to)
         self._register_tags(forward_to)
+        self._register_preco(forward_to)
         self._register_wa(forward_to)
 
     @staticmethod
@@ -195,6 +196,59 @@ class CommandHandler:
             " (liga/desliga a qualquer momento)"
         )
 
+    def _register_preco(self, forward_to):
+        """Comandos `/preco` - regras de 'valor bom' por desconto/preço."""
+
+        @self.client.on(events.NewMessage(chats=forward_to, pattern=r"(?i)^/preco(.*)"))
+        async def handle_preco(event):
+            args_text = event.pattern_match.group(1).strip()
+            args = args_text.split() if args_text else []
+
+            if not args:
+                rules_text = (
+                    "💰 **Regras de preço bom**\n\n"
+                    "Desconto mínimo: {}%\n".format(self.offer_service.get_price_discount_min())
+                    + "Teto de preço: R$ {}\n".format(self.offer_service.get_price_max())
+                    + "WhatsApp: {}\n\n".format(
+                        "ligado 📲" if self.offer_service.has_price_whatsapp_flag() else "desligado"
+                    )
+                    + "⚙️ **Como ajustar**\n"
+                    + "/preco desconto 60\n"
+                    + "/preco teto 20\n"
+                    + "/preco wa   (liga/desliga WhatsApp)"
+                )
+                await event.respond(rules_text)
+                raise events.StopPropagation
+
+            cmd = args[0].lower()
+
+            if cmd == "desconto":
+                if len(args) < 2:
+                    await event.respond("⚠️ Uso: /preco desconto 60")
+                else:
+                    ok, msg = self.offer_service.set_price_discount_min(args[1])
+                    await event.respond(msg)
+            elif cmd == "teto":
+                if len(args) < 2:
+                    await event.respond("⚠️ Uso: /preco teto 20")
+                else:
+                    ok, msg = self.offer_service.set_price_max(args[1])
+                    await event.respond(msg)
+            elif cmd == "wa":
+                current = self.offer_service.has_price_whatsapp_flag()
+                ok, msg = self.offer_service.set_price_whatsapp_flag(not current)
+                await event.respond(msg)
+            else:
+                await event.respond(
+                    "⚠️ Comando não reconhecido.\n\n"
+                    "📋 /preco - mostra as regras\n"
+                    "📉 /preco desconto 60\n"
+                    "💵 /preco teto 20\n"
+                    "📲 /preco wa"
+                )
+
+            raise events.StopPropagation
+
     def _register_wa(self, forward_to):
         """Comandos `/wa`  -  destinos extras em DM, com recorte de keywords."""
 
@@ -284,6 +338,11 @@ class CommandHandler:
                 "➕ `/tags add bug, corre`\n"
                 "➖ `/tags rm bug`\n"
                 "📲 `/tags wa bug`  -  liga/desliga o envio pro WhatsApp\n\n"
+                "💰 `/preco`\n"
+                "Regras de 'valor bom' por desconto/preço.\n"
+                "📉 `/preco desconto 60`\n"
+                "💵 `/preco teto 20`\n"
+                "📲 `/preco wa` - liga/desliga o envio pro WhatsApp\n\n"
                 "📤 `/wa`\n"
                 "Gerencia quem mais recebe as ofertas no WhatsApp (DM).\n"
                 "➕ `/wa add Amigo 5551999999999`\n"

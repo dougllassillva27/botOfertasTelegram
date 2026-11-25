@@ -195,3 +195,37 @@ class TestPromoTagFlow:
         event = _make_event("Panela de pressão 4,5L por R$ 99")
         asyncio.run(handler.handle_message(event))
         event.message.forward_to.assert_not_awaited()
+
+
+class TestPriceFlow:
+    def test_price_good_alone_forwards(self, handler, offer_service):
+        offer_service.state["price_rules"] = {
+            "discount_min": 60,
+            "price_max": 20,
+            "whatsapp": False,
+        }
+        offer_service.deduplicator.is_duplicate.return_value = (False, None, None)
+        event = _make_event("Fone de R$ 299 por R$ 89")
+        asyncio.run(handler.handle_message(event))
+        event.message.forward_to.assert_awaited()
+
+    def test_price_good_low_price_forwards(self, handler, offer_service):
+        offer_service.state["price_rules"] = {
+            "discount_min": 60,
+            "price_max": 20,
+            "whatsapp": False,
+        }
+        offer_service.deduplicator.is_duplicate.return_value = (False, None, None)
+        event = _make_event("Fone por R$ 15")
+        asyncio.run(handler.handle_message(event))
+        event.message.forward_to.assert_awaited()
+
+    def test_no_trigger_skips(self, handler, offer_service):
+        offer_service.state["price_rules"] = {
+            "discount_min": 60,
+            "price_max": 20,
+            "whatsapp": False,
+        }
+        event = _make_event("Panela de pressão 4,5L por R$ 99")
+        asyncio.run(handler.handle_message(event))
+        event.message.forward_to.assert_not_awaited()

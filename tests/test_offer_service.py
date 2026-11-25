@@ -389,3 +389,91 @@ class TestPromoTags:
         assert changed is True
         assert "bug" in offer_service.state["promo_tags"]
         assert "corre" in offer_service.state["promo_tags"]
+
+
+class TestPriceParser:
+    def test_desconto_alto_dispara(self):
+        from app.services.price_parser import check_price_good
+
+        ok, motivo = check_price_good("Fone de R$ 299 por R$ 89", discount_min=60)
+        assert ok is True
+        assert motivo.startswith("desconto_")
+
+    def test_desconto_baixo_nao_dispara(self):
+        from app.services.price_parser import check_price_good
+
+        ok, motivo = check_price_good("Fone de R$ 100 por R$ 99", discount_min=60)
+        assert ok is False
+        assert motivo is None
+
+    def test_preco_unico_abaixo_teto_dispara(self):
+        from app.services.price_parser import check_price_good
+
+        ok, motivo = check_price_good("Fone por R$ 15", price_max=20)
+        assert ok is True
+        assert motivo == "preco_15"
+
+    def test_preco_unico_acima_teto_nao_dispara(self):
+        from app.services.price_parser import check_price_good
+
+        ok, motivo = check_price_good("Fone por R$ 50", price_max=20)
+        assert ok is False
+
+    def test_parcelamento_ignorado(self):
+        from app.services.price_parser import check_price_good
+
+        ok, motivo = check_price_good("Fone 12x de R$ 10", price_max=20)
+        assert ok is False
+
+    def test_multiplos_pares_maior_desconto(self):
+        from app.services.price_parser import check_price_good
+
+        ok, motivo = check_price_good(
+            "De R$ 100 por R$ 90 e de R$ 200 por R$ 50", discount_min=60
+        )
+        assert ok is True
+        assert motivo.startswith("desconto_")
+
+    def test_empty(self):
+        from app.services.price_parser import check_price_good
+
+        assert check_price_good("") == (False, None)
+        assert check_price_good(None) == (False, None)
+
+    def test_br_format(self):
+        from app.services.price_parser import check_price_good
+
+        ok, motivo = check_price_good("De R$ 299,90 por R$ 89,00", discount_min=60)
+        assert ok is True
+
+
+class TestPriceRules:
+    def test_defaults(self, offer_service):
+        assert offer_service.get_price_discount_min() == 60
+        assert offer_service.get_price_max() == 20
+        assert offer_service.has_price_whatsapp_flag() is False
+
+    def test_set_discount_min(self, offer_service):
+        ok, msg = offer_service.set_price_discount_min(50)
+        assert ok is True
+        assert offer_service.get_price_discount_min() == 50
+
+    def test_set_discount_min_invalid(self, offer_service):
+        ok, msg = offer_service.set_price_discount_min(150)
+        assert ok is False
+
+    def test_set_price_max(self, offer_service):
+        ok, msg = offer_service.set_price_max(30)
+        assert ok is True
+        assert offer_service.get_price_max() == 30
+
+    def test_toggle_whatsapp(self, offer_service):
+        offer_service.set_price_whatsapp_flag(True)
+        assert offer_service.has_price_whatsapp_flag() is True
+        offer_service.set_price_whatsapp_flag(False)
+        assert offer_service.has_price_whatsapp_flag() is False
+
+    def test_check_price_good_uses_rules(self, offer_service):
+        offer_service.set_price_discount_min(50)
+        ok, motivo = offer_service.check_price_good("De R$ 100 por R$ 40")
+        assert ok is True
