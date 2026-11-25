@@ -8,6 +8,7 @@ POST /send com { chatId, message, mentions } — menção nativa no grupo.
 import json
 import logging
 import os
+import urllib.error
 import urllib.request
 from datetime import timedelta, timezone
 
@@ -16,6 +17,14 @@ logger = logging.getLogger(__name__)
 # Ponte do WhatsApp (sessão do Sol) — escuta em localhost por segurança
 BRIDGE_URL = os.getenv("WHATSAPP_BRIDGE_URL", "http://127.0.0.1:3001")
 BRIDGE_TIMEOUT = int(os.getenv("WHATSAPP_BRIDGE_TIMEOUT", "10"))
+
+# Segredo por sessão exigido pela ponte em toda rota (inclusive /send).
+# O arquivo fica ao lado do creds.json da sessão e o bridge ROTACIONA o valor a
+# cada spawn — por isso é lido do disco em cada envio, nunca no import: em
+# 19/11/2026 a ponte passou a exigir bearer e o bot ficou 4 dias recebendo
+# 401 em silêncio porque o header simplesmente não existia.
+# No compose o diretório da sessão é montado só-leitura em /hermes-wa.
+BRIDGE_TOKEN_FILE = os.getenv("WHATSAPP_BRIDGE_TOKEN_FILE", "/hermes-wa/.bridge-token")
 
 # Grupo Sol ☀️ | Personal Agent
 WHATSAPP_GROUP_ID = os.getenv(
@@ -55,6 +64,25 @@ def build_offer_text(message_text, chat_title, msg_date, mention=True):
     return "\n".join(parts)
 
 
+def _bridge_token():
+    """Bearer da ponte: env (override manual) ou o arquivo da sessão do Hermes.
+
+    Lido a cada chamada porque o bridge rotaciona o segredo quando é reiniciado;
+    um valor guardado em memória ou em env fixa morre no primeiro restart.
+    """
+    token = os.getenv("WHATSAPP_BRIDGE_TOKEN", "").strip()
+    if token:
+        return token
+    try:
+        with open(BRIDGE_TOKEN_FILE, encoding="utf-8-sig") as handle:
+            return handle.read().strip()
+    except OSError as e:
+        logger.warning(
+            f"Token da ponte WhatsApp indisponível em {BRIDGE_TOKEN_FILE}: {e}"
+        )
+        return ""
+
+
 def _post_send(chat_id, text, mentions=None):
     """POST /send na ponte. Retorna True se a ponte confirmou o envio.
 
@@ -66,10 +94,20 @@ def _post_send(chat_id, text, mentions=None):
     if mentions:
         payload["mentions"] = mentions
 
+    headers = {"Content-Type": "application/json"}
+    token = _bridge_token()
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    else:
+        logger.warning(
+            f"Enviando sem bearer para {chat_id}: a ponte vai responder 401 "
+            "até o token estar acessível."
+        )
+
     request = urllib.request.Request(
         f"{BRIDGE_URL}/send",
         data=json.dumps(payload).encode("utf-8"),
-        headers={"Content-Type": "application/json"},
+        headers=headers,
         method="POST",
     )
     try:
@@ -83,6 +121,17 @@ def _post_send(chat_id, text, mentions=None):
                 return True
             logger.warning(f"Ponte WhatsApp recusou o envio para {chat_id}: {body}")
             return False
+    except urllib.error.HTTPError as e:
+        if e.code == 401:
+            logger.warning(
+                f"Ponte WhatsApp recusou o token (401) para {chat_id}: conferir "
+                f"{BRIDGE_TOKEN_FILE} — o bridge troca o segredo a cada restart."
+            )
+        else:
+            logger.warning(
+                f"Ponte WhatsApp respondeu {e.code} para {chat_id}: {e.reason}"
+            )
+        return False
     except Exception as e:
         logger.warning(f"Falha ao enviar oferta pro WhatsApp em {chat_id}: {e}")
         return False

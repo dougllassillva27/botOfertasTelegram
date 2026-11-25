@@ -402,6 +402,81 @@ O registro completo (contexto, alternativas descartadas, consequências) está e
 
 ---
 
+## Guia Prático (comandos)
+
+🤖 Guia Prático do Garimpeiro Automático
+
+Use a barra / para abrir o menu rápido ou digite os comandos abaixo:
+
+🔍 Busca ativa
+Varre as mensagens dos últimos 7 dias de todos os grupos monitorados.
+• Formato: /buscar <produto>
+• Exemplo: /buscar iphone 15
+• Traz até 30 resultados mais recentes (trava de segurança)
+
+📦 Gerenciar grupos (canais monitorados)
+• Listar: /grupos
+• Adicionar: /grupos add nomedocanal
+• Remover: /grupos rm nomedocanal
+• Vários: /grupos add canal1, canal2, canal3
+
+🔔 Gerenciar alertas (palavras-chave)
+O bot vigia esses produtos 24/7 e avisa quando aparecem.
+• Listar: /alertas
+• Adicionar: /alertas add notebook
+• Remover: /alertas rm shampoo
+• Vários: /alertas add iphone, caixa de som
+
+🏷️ Tags de promoção boa (urgência)
+Vigia ofertas marcadas como boas (bug, corre, urgente...) mesmo sem keyword de produto.
+• Listar: /tags
+• Adicionar: /tags add bug
+• Remover: /tags rm bug
+• Vários: /tags add bug, corre, urgente
+• Ligar/desligar WhatsApp: /tags wa bug
+
+💰 Regras de preço bom (valor bom)
+Dispara quando desconto >= 60% (de R$ X por R$ Y) ou preço final <= R$ 20.
+• Ver regras: /preco
+• Ajustar desconto: /preco desconto 60
+• Ajustar teto: /preco teto 20
+• Ligar/desligar WhatsApp: /preco wa
+
+📲 Ofertas no seu WhatsApp
+Além do grupo no Telegram, o alerta pode ir pro seu WhatsApp com menção - sem precisar abrir o app.
+• Ligar/desligar: /alertas wa notebook
+• A marca é por palavra-chave: vale pra todas as ofertas daquele produto
+• Remover o alerta (/alertas rm) limpa a marca junto
+• Tags também podem ir pro WhatsApp com /tags wa <tag>
+• Regra de preço também pode ir pro WhatsApp com /preco wa
+• Padrão é só Telegram; nada vai pro WhatsApp sem essa marcação
+
+📤 Ofertas pra outra pessoa (mensagem direta)
+Dá pra cadastrar números que recebem as ofertas em conversa individual, cada um com as palavras que ele pediu.
+• Ver quem recebe o quê: /wa
+• Cadastrar: /wa add Amigo 5551999999999
+• Já com as palavras: /wa add Amigo 5551999999999 iphone, teclado
+• Trocar as palavras: /wa kw Amigo iphone, teclado
+• Parar de receber: /wa kw Amigo (sem palavras)
+• Remover o destino: /wa rm Amigo
+⚠️ A palavra precisa já ser um alerta ativo (/alertas). Se não for, é ignorada - cadastre primeiro com /alertas add <palavra>.
+
+Como funciona o disparo:
+• Palavra marcada com /alertas wa → vai pro grupo Sol com menção E pra quem tem aquela palavra
+• Tag de promoção boa → dispara mesmo sem keyword de produto
+• Regra de preço bom → dispara mesmo sem keyword de produto
+• Palavra que só está no recorte de um destino → vai só pra pessoa, o grupo Sol não recebe
+• Palavra de destino que não é alerta ativo → é ignorada (cadastre com /alertas add)
+• Cada pessoa recebe só o que pediu, e uma vez por oferta
+
+⚠️ O WhatsApp não avisa quando um número está errado - a mensagem simplesmente não chega. No primeiro envio, confirme com a pessoa se ela recebeu (e peça pra salvar o contato do bot).
+
+⚙️ Outros
+• /comandos - envia este painel
+• /getid - mostra o ID numérico oculto do chat
+
+---
+
 ## Solução de Problemas
 
 **Comandos não respondem no grupo**

@@ -317,40 +317,46 @@ class CommandHandler:
             events.NewMessage(chats=forward_to, pattern=r"(?i)^/comandos(.*)")
         )
         async def handle_comandos(event):
-            msg = (
-                "🤖 **Central de Controle - Comandos Disponíveis:**\n\n"
-                "🔍 `/buscar <produto>`\n"
-                "Busca ofertas retroativas nos últimos 7 dias em todos os grupos.\n"
-                "Ex: `/buscar iphone`\n\n"
-                "📦 `/grupos`\n"
-                "Gerencia os canais monitorados.\n"
-                "➕ `/grupos add nomedogrupo`\n"
-                "➖ `/grupos rm nomedogrupo`\n"
-                "💡 Em massa: `/grupos add grupo1, grupo2`\n\n"
-                "🔔 `/alertas`\n"
-                "Gerencia as palavras-chave monitoradas.\n"
-                "➕ `/alertas add teclado`\n"
-                "➖ `/alertas rm teclado`\n"
-                "📲 `/alertas wa teclado`  -  liga/desliga o envio pro WhatsApp\n"
-                "💡 Em massa: `/alertas add iphone, caixa de som`\n\n"
-                "🏷️ `/tags`\n"
-                "Gerencia tags de promoção boa (bug, corre, urgente...).\n"
-                "➕ `/tags add bug, corre`\n"
-                "➖ `/tags rm bug`\n"
-                "📲 `/tags wa bug`  -  liga/desliga o envio pro WhatsApp\n\n"
-                "💰 `/preco`\n"
-                "Regras de 'valor bom' por desconto/preço.\n"
-                "📉 `/preco desconto 60`\n"
-                "💵 `/preco teto 20`\n"
-                "📲 `/preco wa` - liga/desliga o envio pro WhatsApp\n\n"
-                "📤 `/wa`\n"
-                "Gerencia quem mais recebe as ofertas no WhatsApp (DM).\n"
-                "➕ `/wa add Amigo 5551999999999`\n"
-                "🔔 `/wa kw Amigo orfeu, bug`  -  o que ele recebe\n"
-                "➖ `/wa rm Amigo`\n\n"
-                "ℹ️ `/getid`\n"
-                "Mostra o ID do chat atual para configurações."
-            )
+            msg = """🤖 Central de Controle - Comandos Disponíveis:
+
+🔍 /buscar <produto>
+Busca ofertas retroativas nos últimos 7 dias em todos os grupos.
+Ex: /buscar iphone
+
+📦 /grupos
+Gerencia os canais monitorados.
+➕ /grupos add nomedogrupo
+➖ /grupos rm nomedogrupo
+💡 Em massa: /grupos add grupo1, grupo2
+
+🔔 /alertas
+Gerencia as palavras-chave monitoradas.
+➕ /alertas add teclado
+➖ /alertas rm teclado
+📲 /alertas wa teclado  -  liga/desliga o envio pro WhatsApp
+💡 Em massa: /alertas add iphone, caixa de som
+
+🏷️ /tags
+Gerencia tags de promoção boa (bug, corre, urgente...).
+➕ /tags add bug, corre
+➖ /tags rm bug
+📲 /tags wa bug  -  liga/desliga o envio pro WhatsApp
+
+💰 /preco
+Regras de 'valor bom' por desconto/preço.
+📉 /preco desconto 60
+💵 /preco teto 20
+📲 /preco wa - liga/desliga o envio pro WhatsApp
+
+📤 /wa
+Gerencia quem mais recebe as ofertas no WhatsApp (DM).
+➕ /wa add Amigo 5551999999999
+🔔 /wa kw Amigo orfeu, bug  -  o que ele recebe
+➖ /wa rm Amigo
+⚠️ Só recebe palavras que já são alertas ativos (/alertas add).
+
+ℹ️ /getid
+Mostra o ID do chat atual para configurações."""
             await event.respond(msg)
             raise events.StopPropagation
 

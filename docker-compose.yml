@@ -13,6 +13,10 @@ services:
     volumes:
       - ./data:/app/data
       - ./logs:/app/logs
+      # `.bridge-token` da sessão do Sol (só-leitura). Diretório, não arquivo:
+      # o bridge rotaciona o segredo via rename e um bind de arquivo único
+      # continuaria servindo o inode velho até o container ser recriado.
+      - /home/ubuntu/.hermes/whatsapp/session:/hermes-wa:ro
     stdin_open: true
     tty: true
     logging:

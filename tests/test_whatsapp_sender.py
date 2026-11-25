@@ -3,6 +3,7 @@ Testes unitários para o whatsapp_sender.
 Cobre: montagem do texto (com/sem link, sem texto) e envio (mock da ponte).
 """
 
+import email.message
 import json
 from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
@@ -203,3 +204,97 @@ class TestDestinosEmDm:
         assert len(payloads) == 1
         assert payloads[0]["chatId"] == destino["jid"]
         assert "mentions" not in payloads[0]
+
+
+class TestBridgeAuth:
+    """Bearer exigido pela ponte.
+
+    Regressão de 19/11/2026: o bridge passou a exigir `Authorization: Bearer`
+    em todas as rotas e o bot, que não mandava header nenhum, recebeu 401 em
+    todo envio por 4 dias (o Telegram seguia normal, então ninguém viu).
+    """
+
+    MSG_DATE = datetime(2026, 10, 9, 14, 30, tzinfo=ws.BR_TZ)
+
+    def _ok_response(self):
+        return MagicMock(
+            read=lambda: json.dumps({"success": True, "messageId": "x"}).encode(),
+            __enter__=lambda s: s,
+            __exit__=lambda s, *a: False,
+        )
+
+    def test_sends_bearer_from_token_file(self, tmp_path, monkeypatch):
+        """O segredo do arquivo da sessão precisa ir no header."""
+        token_file = tmp_path / ".bridge-token"
+        token_file.write_text("segredo-da-sessao\n", encoding="utf-8")
+        monkeypatch.delenv("WHATSAPP_BRIDGE_TOKEN", raising=False)
+        monkeypatch.setattr(ws, "BRIDGE_TOKEN_FILE", str(token_file))
+
+        with patch.object(
+            ws.urllib.request, "urlopen", return_value=self._ok_response()
+        ) as mock_open:
+            ws.send_offer_to_whatsapp("oferta", "promotop", self.MSG_DATE)
+
+        headers = mock_open.call_args[0][0].headers
+        assert headers["Authorization"] == "Bearer segredo-da-sessao"
+
+    def test_env_token_overrides_file(self, tmp_path, monkeypatch):
+        """Override por env continua valendo (debug/apontamento manual)."""
+        token_file = tmp_path / ".bridge-token"
+        token_file.write_text("do-arquivo", encoding="utf-8")
+        monkeypatch.setattr(ws, "BRIDGE_TOKEN_FILE", str(token_file))
+        monkeypatch.setenv("WHATSAPP_BRIDGE_TOKEN", "do-env")
+
+        with patch.object(
+            ws.urllib.request, "urlopen", return_value=self._ok_response()
+        ) as mock_open:
+            ws.send_offer_to_whatsapp("oferta", "promotop", self.MSG_DATE)
+
+        assert mock_open.call_args[0][0].headers["Authorization"] == "Bearer do-env"
+
+    def test_token_is_reread_after_rotation(self, tmp_path, monkeypatch):
+        """Bridge rotaciona o segredo no restart: o header tem que acompanhar."""
+        token_file = tmp_path / ".bridge-token"
+        monkeypatch.delenv("WHATSAPP_BRIDGE_TOKEN", raising=False)
+        monkeypatch.setattr(ws, "BRIDGE_TOKEN_FILE", str(token_file))
+
+        token_file.write_text("token-velho", encoding="utf-8")
+        with patch.object(
+            ws.urllib.request, "urlopen", return_value=self._ok_response()
+        ) as mock_open:
+            ws.send_offer_to_whatsapp("oferta", "promotop", self.MSG_DATE)
+        assert mock_open.call_args[0][0].headers["Authorization"] == "Bearer token-velho"
+
+        token_file.write_text("token-novo", encoding="utf-8")
+        with patch.object(
+            ws.urllib.request, "urlopen", return_value=self._ok_response()
+        ) as mock_open:
+            ws.send_offer_to_whatsapp("oferta", "promotop", self.MSG_DATE)
+        assert mock_open.call_args[0][0].headers["Authorization"] == "Bearer token-novo"
+
+    def test_missing_token_file_does_not_crash(self, tmp_path, monkeypatch):
+        """Sem token acessível o envio falha, mas não levanta exceção."""
+        monkeypatch.delenv("WHATSAPP_BRIDGE_TOKEN", raising=False)
+        monkeypatch.setattr(ws, "BRIDGE_TOKEN_FILE", str(tmp_path / "nao-existe"))
+
+        with patch.object(
+            ws.urllib.request, "urlopen", side_effect=ConnectionRefusedError("down")
+        ):
+            ok = ws.send_offer_to_whatsapp("oferta", "promotop", self.MSG_DATE)
+
+        assert ok is False
+
+    def test_401_returns_false_without_raising(self, monkeypatch, tmp_path):
+        """401 é o sintoma do token errado: vira False + log, não traceback."""
+        token_file = tmp_path / ".bridge-token"
+        token_file.write_text("token-invalido", encoding="utf-8")
+        monkeypatch.delenv("WHATSAPP_BRIDGE_TOKEN", raising=False)
+        monkeypatch.setattr(ws, "BRIDGE_TOKEN_FILE", str(token_file))
+
+        erro = ws.urllib.error.HTTPError(
+            f"{ws.BRIDGE_URL}/send", 401, "Unauthorized", email.message.Message(), None
+        )
+        with patch.object(ws.urllib.request, "urlopen", side_effect=erro):
+            ok = ws.send_offer_to_whatsapp("oferta", "promotop", self.MSG_DATE)
+
+        assert ok is False
