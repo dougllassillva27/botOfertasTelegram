@@ -477,3 +477,18 @@ class TestPriceRules:
         offer_service.set_price_discount_min(50)
         ok, motivo = offer_service.check_price_good("De R$ 100 por R$ 40")
         assert ok is True
+
+
+class TestPriceParserMilhar:
+    def test_milhar_nao_dispara(self):
+        from app.services.price_parser import check_price_good
+
+        ok, motivo = check_price_good("Ar Condicionado R$ 2.699 à vista", price_max=20)
+        assert ok is False
+        assert motivo is None
+
+    def test_milhar_decimal(self):
+        from app.services.price_parser import _to_float
+
+        assert _to_float("2.699") == 2699.0
+        assert _to_float("2.69") == 2.69

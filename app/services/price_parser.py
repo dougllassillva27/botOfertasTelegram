@@ -30,6 +30,13 @@ def _to_float(s):
             s = s.replace(",", "")
     elif "," in s:
         s = s.replace(",", ".")
+    elif "." in s:
+        # Ambíguo: ponto pode ser decimal (2.69) ou milhar (2.699).
+        # Em preços em R$, se o ponto é seguido de exatamente 3 dígitos,
+        # tratar como separador de milhar (formato BR).
+        parts = s.split(".")
+        if len(parts) == 2 and len(parts[1]) == 3 and parts[1].isdigit():
+            s = s.replace(".", "")
     try:
         return float(s)
     except ValueError:
