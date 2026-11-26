@@ -5,7 +5,7 @@ Mantém a lógica de parsing isolada e testável.
 """
 import re
 
-_NUM = r"(\d{1,3}(?:[.\s]\d{3})*(?:[.,]\d{1,2})?|\d+(?:[.,]\d{1,2})?)"
+_NUM = r"(\d{1,3}(?:[.\s]\d{3})+(?:[.,]\d{1,2})?|\d+(?:[.,]\d{1,2})?)"
 
 _INSTALLMENT = re.compile(r"\d+\s*x\s*(?:de\s*)?r?\$?\s*", re.IGNORECASE)
 
